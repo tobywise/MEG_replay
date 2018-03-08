@@ -26,6 +26,10 @@ class ReplayExperiment(object):
             self.config = yaml.load(f)
 
 
+        subject_id = 10
+        random.seed(subject_id)
+
+
         # # This part sets up various things to allow us to save the data
         #
         # self.script_location = os.path.dirname(__file__)
@@ -89,6 +93,10 @@ class ReplayExperiment(object):
         # self.inst_text.font = 'Open Sans'
 
         # Stimulus location and size information - allows this to be easily set and reused later
+        stimuli_location = '/Stimuli'
+        stimuli = [os.path.join(stimuli_location, i) for i in os.listdir(stimuli_location)
+                   if '.png' in i or '.jpg' in i or '.jpeg' in i]
+        random.shuffle(stimuli)
 
         # positions are given as (x units, y units) - here we're putting three of these coordinate pairs in a list
         self.locs = [(-9, 0), (0, 0), (9, 0)]  # store preset positions for use later
