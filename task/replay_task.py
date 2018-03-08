@@ -6,6 +6,8 @@ from psychopy.iohub import launchHubServer
 import pandas as pd
 import os, csv
 import yaml
+import numpy as np
+import random
 
 
 class ReplayExperiment(object):
@@ -99,6 +101,10 @@ class ReplayExperiment(object):
         # use imagestim to set up image stimuli - you'll need to fill in some details here
         self.display_image = visual.ImageStim(win=self.win, size=(12, 8))
 
+        # TRANSITION MATRIX
+
+        matrix, matrix_keys = self.create_matrix()
+
 
 
     def get_responses(self, response_event, response_keys, start_time=0, mapping=None):
@@ -187,7 +193,37 @@ class ReplayExperiment(object):
         event.waitKeys(maxWait=5, keyList='space')
 
 
+    def create_matrix(self):
 
+        # T MAZE
+        matrix = np.zeros((13, 13))
+
+        matrix[0, 1] = 1
+        matrix[[1, 1], [0, 2]] = 1
+        matrix[[2, 2], [1, 3]] = 1
+        matrix[[3, 3, 3, 3], [2, 4, 9, 10]] = 1
+        matrix[[4, 4], [3, 5]] = 1
+        matrix[[5, 5], [4, 6]] = 1
+        matrix[6, 5] = 1
+
+        matrix[7, 8] = 1
+        matrix[[8, 8], [7, 9]] = 1
+        matrix[[9, 9], [8, 3]] = 1
+        matrix[[10, 10], [3, 11]] = 1
+        matrix[[11, 11], [10, 12]] = 1
+        matrix[12, 11] = 1
+
+        matrix_keys = matrix.astype(int).astype(str)
+        keys = ['up', 'down', 'left', 'right']
+        random.shuffle(keys)
+
+        for i in range(matrix.shape[0]):
+            one_idx = np.where(matrix[i, :] == 1)
+            random.shuffle(keys)
+            for j in range(len(one_idx[0])):
+                matrix_keys[i, one_idx[0][j]] = keys[j]
+
+        return matrix, matrix_keys
 
     def run_task(self, training=False, structured=False):
 
