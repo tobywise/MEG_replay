@@ -25,10 +25,8 @@ class ReplayExperiment(object):
         with open(config) as f:
             self.config = yaml.load(f)
 
-
         subject_id = 10
         random.seed(subject_id)
-
 
         # # This part sets up various things to allow us to save the data
         #
@@ -94,9 +92,9 @@ class ReplayExperiment(object):
 
         # Stimulus location and size information - allows this to be easily set and reused later
         stimuli_location = '/Stimuli'
-        stimuli = [os.path.join(stimuli_location, i) for i in os.listdir(stimuli_location)
+        self.stimuli = [os.path.join(stimuli_location, i) for i in os.listdir(stimuli_location)
                    if '.png' in i or '.jpg' in i or '.jpeg' in i]
-        random.shuffle(stimuli)
+        random.shuffle(self.stimuli)
 
         # positions are given as (x units, y units) - here we're putting three of these coordinate pairs in a list
         self.locs = [(-9, 0), (0, 0), (9, 0)]  # store preset positions for use later
@@ -111,7 +109,7 @@ class ReplayExperiment(object):
 
         # TRANSITION MATRIX
 
-        matrix, matrix_keys = self.create_matrix()
+        self.matrix, self.matrix_keys = self.create_matrix()
 
 
 
@@ -233,6 +231,29 @@ class ReplayExperiment(object):
 
         return matrix, matrix_keys
 
+
+    def moves_to_states(self, trial_moves, start):
+
+        state = start
+        previous_state = None
+
+        moves_states = []
+
+        for n, move in enumerate(trial_moves):
+            print "Move {0}, move = {1}".format(n, move)
+            allowed_moves = [i for n, i in enumerate(self.matrix_keys[state, :]) if not '0' in i
+                             and not n == previous_state]
+            if move not in allowed_moves:
+                return False
+            row = self.matrix_keys[state, :]
+            next_state = np.where(row == move)
+            moves_states.append((move, next_state))
+            previous_state = state
+            state = next_state[0][0]
+
+        return moves_states
+
+
     def run_task(self, training=False, structured=False):
 
         # Clock
@@ -261,6 +282,9 @@ class ReplayExperiment(object):
         self.move_duration = 2
         self.n_moves = 5
         self.move_period_duration = self.move_duration * self.n_moves
+
+        test_moves = np.repeat(['up', 'down', 'left', 'right'], 5)
+
 
         #if self.instruction_duration is True:
         #     self.instruction_text.text = "Welcome to the MEG thing"
@@ -292,13 +316,17 @@ class ReplayExperiment(object):
 
             # set text
             welcome_text = 'Welcome to MEG thing!'
-            key_text = 'Enter key movements'
+            key_text = 'Enter key movements\n{0}'
             left_text = 'left'
             right_text = 'right'
             up_text = 'up'
             down_text = 'down'
 
-
+            # Starting state
+            start_state = np.random.randint(0, 13)
+            self.display_image.setImage(self.stimuli[start_state])
+            row = self.matrix_keys[start_state, :]
+            states = None
 
             # Default values for responses in case the subject makes no response
             response = None
@@ -308,6 +336,16 @@ class ReplayExperiment(object):
 
             trial_moves = []
 
+            moves_found = False
+
+            while not moves_found:
+                random.shuffle(test_moves)
+                moves_to_enter = self.moves_to_states(test_moves, start_state)
+                if moves_to_enter is not False:
+                    moves_found = True
+                    key_text.format(moves_to_enter)
+
+
             while continue_trial:  # run the trial
 
                 t = self.clock.getTime()  # get the time
@@ -315,8 +353,9 @@ class ReplayExperiment(object):
                 # SCREEN 1
                 if change_times[0] <= t < change_times[1]:
 
-                    self.main_text.text = welcome_text
-                    self.main_text.draw()
+                    # self.main_text.text = welcome_text
+                    # self.main_text.draw()
+                    self.display_image.draw()
 
 
                 #SCREEN 2
@@ -353,21 +392,16 @@ class ReplayExperiment(object):
                     self.main_text.draw()
 
                 elif change_times[3] <= t < change_times[4]:
-                    for n, move in enumerate(trial_moves):
+                    if states == None:
+                        states = self.moves_to_states(trial_moves, start_state)
+                    for n, move, state in enumerate(states):
                         if change_times[3] + n * self.move_duration <= t < change_times[3] + (n + 1) * self.move_duration:
-                            self.show_move(-99, 'cat.jpeg', move)
+                            self.show_move(-99, self.stimuli[state], move)
 
                 elif t >= change_times[-1]:
                     print trial_moves
 
                     continue_trial = False
-
-
-
-
-
-
-
 
 
                 # # SCREEN 2
