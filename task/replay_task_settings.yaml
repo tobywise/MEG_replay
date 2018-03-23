@@ -1,0 +1,5 @@
+durations:
+  decision_time: [(3, 4), (4, 5)]
+stimuli:
+  stim_A: 'image_A.png'
+  stim_B: 'image_B.png'
