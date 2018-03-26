@@ -1,5 +1,6 @@
 import numpy as np
 import networkx as nx
+import os
 
 # Rows of the transition matrix
 rows = []
@@ -19,6 +20,8 @@ for i in connections:
 
 # Convert the list of rows to a 2D array
 transition_matrix = np.array(rows)
+
+np.savetxt(os.path.join('task/Task_information', 'transition_matrix.txt'), transition_matrix)
 
 # To quickly visualise, convert to a networkX graph and draw
 G = nx.Graph(transition_matrix)
