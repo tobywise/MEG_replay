@@ -144,9 +144,16 @@ class ReplayExperiment(object):
     def create_arrows(self, n):
 
         """
+        Creates a list of arrow stimuli representing moves the subject has made. Arrow directions are not determined at
+        this point - this is just a correctly positioned list of arrow stimuli to be given images later.
 
-        :param n:
-        :return:
+        Args:
+            n: number of arrows to show
+
+        Returns:
+            Positions of the arrows
+            Arrow stimuli in correct positions
+
         """
 
         arrow_positions = np.arange(-np.abs(((n - 1) * self.arrow_gap) / 2.),
@@ -188,30 +195,23 @@ class ReplayExperiment(object):
 
             return response, response_time
 
-    def show_stimuli(self, stimuli):
-
-        """
-        Shows stimuli. This allows us to simply write
-        >>> self.show_stimuli(stimulus_list)
-
-        rather than
-        >>> stimulus_A.draw()
-        >>> stimulus_B.draw()
-        >>> stimulus_C.draw()
-
-        etc...
-
-        Args:
-            stimuli: A list of stimuli we want to draw - e.g. [stim_A, stim_B, stim_C]
-
-        Returns:
-
-        """
-
-        for stim in stimuli:
-            stim.draw()
 
     def show_move(self, outcome, shock, picture, move, t, shock_time, show_moves=True):
+
+        """
+        Shows the image and (potentially) outcome associated with a state
+
+        Args:
+            outcome: The reward value of the state
+            shock: Whether the state is associated with a shock (binary)
+            picture: The image to be displayed (path to the image)
+            move: Not sure...
+            t: Current time
+            shock_time: Time at which the shock outcome should be displayed (this occurs after the reward outcome)
+            show_moves: Whether or not to show the moves leading to a particular state underneath the image (boolean)
+
+
+        """
 
 
         # set image
@@ -243,6 +243,18 @@ class ReplayExperiment(object):
 
     def instructions(self, text, max_wait=2):
 
+        """
+        Shows instruction text
+
+        Args:
+            text: Text to display
+            max_wait: The maximum amount of time to wait for a response before moving on
+
+        Returns:
+
+        """
+
+
         # set text
         self.instruction_text.text = text
         # draw
@@ -253,6 +265,13 @@ class ReplayExperiment(object):
 
 
     def create_matrix(self):
+
+        """
+        Assigns keys to the transition matrix provided in the config file
+
+        Returns: The matrix and a matrix of keys subjects can press from each state, and where that key takes them
+
+        """
 
         matrix = np.loadtxt(self.config['directories']['matrix'])
 
@@ -271,6 +290,18 @@ class ReplayExperiment(object):
 
 
     def moves_to_states(self, trial_moves, start):
+
+        """
+        Converts a series of moves to a sequence of states
+
+        Args:
+            trial_moves: The moves made by the subject
+            start: The starting state
+
+        Returns:
+            A list of tuples of the form (move made by the subject, the state this move took them to)
+
+        """
 
         state = start
         previous_state = None
@@ -292,6 +323,19 @@ class ReplayExperiment(object):
         return moves_states
 
     def test_moves(self, start, n_moves, single_move=True):
+
+        """
+        For a given state, works out a series of allowable moves
+
+        Args:
+            start: Starting state
+            n_moves: Number of moves to make
+            single_move: If true, a single random move is selected from the allowed moves
+
+        Returns:
+            A list of allowed moves
+
+        """
 
         state = start
         previous_state = None
@@ -635,20 +679,6 @@ class ReplayExperiment(object):
                         continue_trial = False
 
 
-                    # # SCREEN 2
-                    # elif change_times[1] <= t < change_times[2]:
-                    #
-                    #     self.show_stimuli()
-                    #
-                    # # ITI
-                    # elif change_times[2] <= t < change_times[3]:
-                    #
-                    #     self.fixation.draw()
-
-                    # End trial
-                    # elif t >= change_times[-1]:
-                    #     print trial_moves
-                    #     continue_trial = False
 
                 # flip to draw everything
                 self.win.flip()
