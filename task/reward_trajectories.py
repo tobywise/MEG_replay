@@ -16,6 +16,7 @@ n_blocks = 4  # number of blocks (reversals)
 scale = 0.03  # mean step size of random walk
 sd = 0.05  # SD of step size
 diff = 0.04  # difference between random walks in the same tree branch
+n_outcome_trials = 25
 
 
 # CALCULATE MEAN INNOVATIONS FOR RANDOM WALK
@@ -121,5 +122,9 @@ shock_df.columns = ['0_shock', '1_shock', '2_shock', '3_shock']
 
 trial_info = pd.concat([reward_df, shock_df], axis=1)
 trial_info['trial_number'] = range(0, len(trial_info))
+
+trial_type = np.hstack([np.ones(n_outcome_trials), np.zeros(n_trials - n_outcome_trials)])
+np.random.shuffle(trial_type)
+trial_info['trial_type'] = trial_type
 
 trial_info.to_csv('task/Task_information/trial_info.csv', index=False)
