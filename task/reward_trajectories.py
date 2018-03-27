@@ -117,7 +117,7 @@ plt.savefig('Slides/random_walks_shocks.svg')
 reward_df = pd.DataFrame(values)
 reward_df.columns = ['0_reward', '1_reward', '2_reward', '3_reward']
 
-shock_df = pd.DataFrame(values)
+shock_df = pd.DataFrame(shock_outcomes)
 shock_df.columns = ['0_shock', '1_shock', '2_shock', '3_shock']
 
 trial_info = pd.concat([reward_df, shock_df], axis=1)
@@ -126,5 +126,6 @@ trial_info['trial_number'] = range(0, len(trial_info))
 trial_type = np.hstack([np.ones(n_outcome_trials), np.zeros(n_trials - n_outcome_trials)])
 np.random.shuffle(trial_type)
 trial_info['trial_type'] = trial_type
+trial_info[trial_info.isnull()] = 0
 
 trial_info.to_csv('task/Task_information/trial_info.csv', index=False)
