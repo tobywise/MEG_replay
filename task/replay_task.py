@@ -142,6 +142,10 @@ class ReplayExperiment(object):
         self.reward_info = self.trial_info[[c for c in self.trial_info.columns if 'reward' in c or c == 'trial_number']]
         self.shock_info = self.trial_info[[c for c in self.trial_info.columns if 'shock' in c or c == 'trial_number']]
 
+        # Instruction text
+        self.main_instructions = self.load_instructions(self.config['directories']['main_instructions'])
+        self.training_instructions = self.load_instructions(self.config['directories']['training_instructions'])
+        self.task_instructions = self.load_instructions(self.config['directories']['task_instructions'])
 
         # on each loop, append an image stimulus to the list
 
@@ -155,6 +159,13 @@ class ReplayExperiment(object):
 
         # Create the arrow stimuli
         self.arrow_positions, self.arrow_progress = self.create_arrows(self.n_moves)
+
+    def load_instructions(self, text_file):
+
+        with open(text_file, 'r') as f:
+            instructions = f.read()
+
+        return instructions.split('*')
 
     def create_arrows(self, n):
 
@@ -268,6 +279,25 @@ class ReplayExperiment(object):
         # waitkeys
         event.waitKeys(maxWait=max_wait, keyList='space')
 
+    def grand_instructions(self, text_file):
+
+        """
+        Displays instruction text files for main instructions, training instructions, task instructions
+        :param text_file: List of strings
+
+        """
+
+        if not isinstance(text_file, list):
+            raise TypeError("Input is not a list")
+
+        for i in text_file:
+            self.instruction_text.text = i
+            self.instruction_text.draw()
+            self.win.flip()
+            core.wait(1)
+            key = event.waitKeys(keyList=['space', 'escape', 'esc'])
+            if key[0] in ['escape', 'esc']:
+                core.quit()
 
     def create_matrix(self):
 
@@ -368,6 +398,9 @@ class ReplayExperiment(object):
 
         return moves_states
 
+    def show_starting_instructions(self):
+        self.grand_instructions(self.main_instructions)
+
     def run_training(self):
 
         # Clock
@@ -413,19 +446,14 @@ class ReplayExperiment(object):
 
 
 
-        text = "Begin training by pressing the spacebar"
 
-        self.instructions(text, max_wait=5)
+        self.grand_instructions(self.training_instructions)
 
-
-
-        # Starting state
-        #start in same place every time, this won't be necessary soon
-        start_state = [0, 1, 11, 12, 8, 7, 5, 6]
+        start_state = [0]
         random.shuffle(start_state)
         start_state = start_state[0]
         self.display_image.setImage(self.stimuli[start_state])
-        row = self.matrix_keys[start_state, :]
+        # row = self.matrix_keys[start_state, :]
         states = None
 
         for trial in range(self.n_training_trials):
@@ -433,9 +461,9 @@ class ReplayExperiment(object):
             text = "Starting new trial"
             self.instructions(text)
 
-            for i in range(len(trial_info)):  # TRIAL LOOP - everything in here is repeated each trial
+            for i in range(self.n_moves + 1):  # TRIAL LOOP - everything in here is repeated each trial
 
-                print "Trial {0} / {1}".format(i, len(trial_info))
+                print "Move {0} / {1}".format(i + 1, len(trial_info))
 
                 # self.io.clearEvents('all')  # clear keyboard events
 
@@ -447,24 +475,21 @@ class ReplayExperiment(object):
                                 self.pre_move_duration + self.move_entering_duration + self.move_period_duration]  # list of times at which the screen should change
 
 
-                # Default values for responses in case the subject makes no response
-                response = None
-                rt = None
-
-                key = None
-
-                trial_moves = []
+                if self.matrix[start_state, :].mean() == 0:
+                    terminal = True
+                else:
+                    terminal = False
 
                 moves_found = False
-
                 moves_to_enter = []
 
-                while not moves_found:
-                    random.shuffle(test_moves)
-                    moves_to_enter = self.test_moves(start_state, 1, single_move=False)
-                    # print moves_to_enter
-                    if moves_to_enter is not False:
-                        moves_found = True
+                if not terminal:
+                    while not moves_found:
+                        random.shuffle(test_moves)
+                        moves_to_enter = self.test_moves(start_state, 1, single_move=False)
+                        # print moves_to_enter
+                        if moves_to_enter is not False:
+                            moves_found = True
 
 
                 training_arrow_positions, training_arrows = self.create_arrows(len(moves_to_enter))
@@ -484,21 +509,27 @@ class ReplayExperiment(object):
 
                 ## THIS IS WHERE THEY MAKE THE MOVE
                 self.win.flip()
-                key = event.waitKeys(keyList=moves_to_enter + ['escape', 'esc'])[0]
-                start_state = self.moves_to_states([key], start_state)[0][1]
 
+                if not terminal:
+                    key = event.waitKeys(keyList=moves_to_enter + ['escape', 'esc'])[0]
+                    start_state = self.moves_to_states([key], start_state)[0][1]
+                    self.circle.pos = training_move_positions[key]
+                    self.circle.draw()
+                    for n, i in enumerate(moves_to_enter):
+                        training_arrows[n].draw()
+                else:
+                    start_state = 0
 
-                self.circle.pos = training_move_positions[key]
-                self.circle.draw()
                 self.display_image.draw()
-                for n, i in enumerate(moves_to_enter):
-                    training_arrows[n].draw()
+
                 self.win.flip()
                 core.wait(1)
 
                 # quit if subject pressed scape
                 if key in ['escape', 'esc']:
                     core.quit()
+
+            core.wait(1)
 
     def run_task(self):
 
@@ -533,9 +564,8 @@ class ReplayExperiment(object):
 
 
 
-        text = "Welcome! In this task you will be asked to  Press spacebar to continue."
+        self.grand_instructions(self.task_instructions)
 
-        self.instructions(text)
 
         for i in range(len(self.trial_info)):  # TRIAL LOOP - everything in here is repeated each trial
 
@@ -698,6 +728,8 @@ class ReplayExperiment(object):
 
 experiment = ReplayExperiment('replay_task_settings.yaml')
 
+experiment.show_starting_instructions()
+experiment.run_training()
 experiment.run_task()
-#experiment.run_training()
+
 

@@ -1,34 +1,12 @@
 Welcome!
 
 In this task you will be asked to move through a series of pictures. In each trial, you will be able to make three moves.
-After entering your movements, you will be shown the images you have just moved through. Upon display of the third
-and final image, you will see a monetary reward value. You will only see rewards associated with this third image.
-Your goal is to find the image that has the highest reward value. Across trials, however, the image associated
-with the highest reward value will change frequently. This reward will be added to your total, and a new trial will begin.
+After entering your movements, you will be shown the images you have just moved through. Upon display of the third a final image, you will see a monetary reward value. You will only see rewards associated with this third image.
 
-During some trials, which will be labeled as "OUTCOME ONLY," you will not be able to make any moves,
-but you will be shown a picture and a reward value as if you made moves yourself.
+*Your goal is to find the image that has the highest reward value. Across trials, however, the image associated with the highest reward value will change frequently. This reward will be added to your total, and a new trial will begin.
 
-Throughout the task, you will be given a shock upon encountering a certain image. This image will be associated
-with a shock for some trials, but across trials, the image associated with the shock will change frequently.
+*During some trials, which will be labeled as "OUTCOME ONLY," you will not be able to make any moves, but you will be shown a picture and a reward value as if you made moves yourself.
 
-You will first be guided through a training. In the training, you will be able to move through the pictures but
-you will not see or receive any rewards. With each picture shown, you will also be shown all the possible moves
-you can make. Your job is to move through the pictures using these displayed possible moves. The goal of the training
-is to become familiar with the pictures before beginning the task.
+*Throughout the task, you will be given a shock upon encountering a certain image. This image will be associated with a shock for some trials, but across trials, the image associated with the shock will change frequently.
 
-The training will last about X minutes, and you will navigate using the arrow keys. The possible moves will be displayed
-on the screen as arrows, and these arrows correspond to the arrows on the arrow keys. To begin, press the spacebar. If
-you have a question or want to stop, press the escape key (SHOULD WE INSERT A PAUSE OPTION?).
-
-Now that you've become familiar with the pictures, we're going to begin the task.
-
-You will move through the pictures in this task using the arrow keys. You'll see an image on the screen, and then it is
-up to you to move to another picture usinig what you learned about the pictures in the training.
-You will enter three movements with the arrow keys, then you will be shown which pictures you have moved through.
-The moves you make will be displayed as arrows on the screen as you press the arrow keys. When the third image is
-displayed on the screen, you will also see a monetary reward value that will be added to your total winnings.
-
-Remember, your goal is to find the picture with the highest reward value. This image will change frequently across trials.
-
-If you don't have any questions, press the spacebar to begin.
+*If you don't have any questions, press the spacebar to begin.

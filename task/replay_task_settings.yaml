@@ -1,5 +1,29 @@
+arrow positions:
+  arrow_gap: 3
+number training trials:
+  n_training_trials: 10
 durations:
-  decision_time: [(3, 4), (4, 5)]
-stimuli:
-  stim_A: 'image_A.png'
-  stim_B: 'image_B.png'
+  start_duration: 5
+  pre_move_duration: 3
+  move_entering_duration: 3
+  move_durations: 2
+  outcome_only_text_duration: 1
+  outcome_only_duration: 3
+  n_moves: 3
+directories:
+  stimuli_path: 'Stimuli'
+  arrow_path: 'Stimuli/Arrows'
+  matrix: 'Task_information/transition_matrix.txt'
+  trial_info: 'Task_information/trial_info.csv'
+  main_instructions: 'Instructions/instructions.txt'
+  training_instructions: 'Instructions/training_instructions.txt'
+  task_instructions: 'Instructions/task_instructions.txt'
+response keys:
+  response_keys: ['down', 'left', 'right', 'up']
+image sizes:
+  size_image_size: !!python/tuple [6, 6]
+  size_outcome_image: !!python/tuple [2, 3]
+  size_display_image: !!python/tuple [11, 11]
+  size_arrow_display: !!python/tuple [2, 3]
+
+
