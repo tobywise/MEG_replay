@@ -144,7 +144,6 @@ class ReplayExperiment(object):
         self.shock_info = self.trial_info[[c for c in self.trial_info.columns if 'shock' in c or c == 'trial_number']]
 
 
-
         # on each loop, append an image stimulus to the list
 
         # TRANSITION MATRIX
