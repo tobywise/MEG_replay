@@ -514,6 +514,7 @@ class ReplayExperiment(object):
         self.instructions(text)
 
 
+
         for i in range(len(trial_info)):  # TRIAL LOOP - everything in here is repeated each trial
 
             print "Trial {0} / {1}".format(i, len(trial_info))
