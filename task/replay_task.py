@@ -11,7 +11,6 @@ import random
 
 
 
-
 class ReplayExperiment(object):
 
     def __init__(self, config=None):
@@ -136,13 +135,6 @@ class ReplayExperiment(object):
         self.n_moves = self.config['durations']['n_moves']
         #
         self.n_training_trials = self.config['number training trials']['n_training_trials']
-
-        self.trial_info = pd.read_csv(self.config['directories']['trial_info'])
-        self.trial_info = self.trial_info.round(2)
-
-        self.reward_info = self.trial_info[[c for c in self.trial_info.columns if 'reward' in c or c == 'trial_number']]
-        self.shock_info = self.trial_info[[c for c in self.trial_info.columns if 'shock' in c or c == 'trial_number']]
-
 
         # on each loop, append an image stimulus to the list
 
@@ -523,8 +515,6 @@ class ReplayExperiment(object):
         test_moves = np.repeat(['up', 'down', 'left', 'right'], 5)
 
 
-
-
         #if self.instruction_duration is True:
         #     self.instruction_text.text = "Welcome to the MEG thing"
         #     self.instruction_text.draw()
@@ -543,10 +533,9 @@ class ReplayExperiment(object):
 
         self.instructions(text)
 
+        for i in range(len(trial_info)):
 
-        for i in range(len(trial_info)):  # TRIAL LOOP - everything in here is repeated each trial
-
-            print "Trial {0} / {1}".format(i, len(trial_info))
+            print "Trial {0} / {1}".format(i + 1, len(trial_info))
 
             # self.io.clearEvents('all')  # clear keyboard events
 
@@ -557,7 +546,9 @@ class ReplayExperiment(object):
                             self.pre_move_duration + self.move_entering_duration, self.start_duration +
                             self.pre_move_duration + self.move_entering_duration + self.move_period_duration]  # list of times at which the screen should change
 
-
+            outcome_only_change_times = [0, self.config['durations']['outcome_only_text_duration'],
+                                         self.config['durations']['outcome_only_text_duration'] +
+                                         self.config['durations']['outcome_only_duration']]
 
             # Starting state
             start_state = 0
