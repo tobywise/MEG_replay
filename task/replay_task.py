@@ -15,8 +15,6 @@ class ReplayExperiment(object):
 
     def __init__(self, config=None):
 
-        # All of this code will run when we load an instance of this class
-
         # Load config
         # this sets self.config (the config attribute of our experiment class) to a dictionary containing all the values
         # in our config file. The keys of this dictionary correspond to the section headings in the config file, and
@@ -26,33 +24,51 @@ class ReplayExperiment(object):
         with open(config) as f:
             self.config = yaml.load(f)
 
-        subject_id = 10
-        random.seed(subject_id)
+        # ------------------------------------#
+        # Subject/task information and saving #
+        # ------------------------------------#
 
-        # # This part sets up various things to allow us to save the data
-        #
-        # self.script_location = os.path.dirname(__file__)
-        #
-        # # Folder for saving data
-        # self.save_folder = 'replay_behavioural_data'
-        # if not os.path.isdir(self.save_folder):
-        #     os.makedirs(self.save_folder)
-        #
-        # # Data dictionary - used for saving data
-        # self.data_keys = ['Subject', 'Trial']
-        # self.trial_data = dict(zip(self.data_keys, [None for i in self.data_keys]))
-        #
-        # # Enter subject ID for saving
-        # dialogue = gui.Dlg()
-        # dialogue.addField('Subject')
-        # dialogue.show()
-        #
-        # if dialogue.OK:
-        #     self.subject = dialogue.data[0]
-        # else:
-        #     core.quit()
+        # Enter subject ID and other information
+        dialogue = gui.Dlg()
+        dialogue.addField('Subject ID')
+        dialogue.addField('Shock level')
+        dialogue.show()
 
-        # This part sets up information about the monitor
+        # check that values are OK and assign them to variables
+        if dialogue.OK:
+            subject_id = dialogue.data[0]
+            shock_level = dialogue.data[1]
+        else:
+            core.quit()
+
+        random.seed(subject_id)  # all randomness will be the same every time the subject does the task
+
+        # This part sets up various things to allow us to save the data
+        self.script_location = os.path.dirname(__file__)
+
+        # Folder for saving data
+        self.save_folder = 'replay_behavioural_data'
+        if not os.path.isdir(self.save_folder):
+            os.makedirs(self.save_folder)
+
+        # Data dictionary - used for saving data
+        self.data_keys = ['Subject', 'Trial']
+        self.trial_data = dict(zip(self.data_keys, [None for i in self.data_keys]))
+
+        # ------------- #
+        # Task settings #
+        # ------------- #
+
+        self.n_moves = self.config['durations']['n_moves']  # number of moves subjects are expected to make
+        self.n_training_trials = self.config['number training trials']['n_training_trials']  # number of training trials
+
+        # Create the transition matrix
+        self.matrix, self.matrix_keys = self.create_matrix()  # uses matrix given in the config file
+
+
+        # -----------------------#
+        # Monitor & window setup #
+        # -----------------------#
 
         monitor = monitors.Monitor('test2', width=40.92, distance=74)
         monitor.setSizePix((1024, 768))
@@ -62,84 +78,61 @@ class ReplayExperiment(object):
 
         self.response_keys = self.config['response keys']['response_keys']
 
-        self.arrow_images = {}
 
-        for n in self.response_keys:
-            self.arrow_images[n] = os.path.join(self.config['directories']['arrow_path'], '{0}.png'.format(n))
+        # --------#
+        # Stimuli #
+        # --------#
 
-        # Here we define devices we're using - this might get more complicated later
-
-        # self.io = launchHubServer(session_code='A', experiment_code='1')
-        # self.keyboard = self.io.devices.keyboard  # iohub keyboard
-
-
-        # -------------------------------------------------------------------------------#
-        # Here we want to define all the stimuli we're going to be showing on the screen #
-        # -------------------------------------------------------------------------------#
-
-        # Fixation cross
-        self.fixation = visual.TextStim(win=self.win, height=0.8, color='white', text="+")
-
-        # # Text stimuli
-        self.main_text = visual.TextStim(win=self.win, height=0.8, color='white',
-                                         alignVert='center', alignHoriz='center', wrapWidth=30)
-        # reward value text
-        self.outcome_text = visual.TextStim(win=self.win, height=1.5, color='white',
-                                         pos=(0, 7), wrapWidth=30)
-
-        self.move_text = visual.TextStim(win=self.win, height=0.8, color='white',
-                                         pos=(0, -7), wrapWidth=30)
-        # instruction text
-        self.instruction_text = visual.TextStim(win=self.win, height=0.8, color='white', wrapWidth=30)
-
-        # running total text
-        self.reward_text = visual.TextStim(win=self.win, height=0.8, color='white', pos=(-12, 0), wrapWidth=30)
-
+        # Text stimuli
 
         # self.main_text.fontFiles = ["fonts/OpenSans-Regular.ttf"]  # Arial is horrible
         # self.main_text.font = 'Open Sans'
-        #
-        # self.inst_text = visual.TextStim(win=self.win, height=0.7, color='white', pos=(0, -7), wrapWidth=30)
-        # self.inst_text.fontFiles = ["C:\Users\Toby\Downloads/fonts\Open_Sans\OpenSans-Regular.ttf"]
-        # self.inst_text.font = 'Open Sans'
 
-        # Stimulus location and size information - allows this to be easily set and reused later
+        # Fixation cross
+        self.fixation = visual.TextStim(win=self.win, height=0.8, color='white', text="+")
+        # Text stimuli
+        self.main_text = visual.TextStim(win=self.win, height=0.8, color='white',
+                                         alignVert='center', alignHoriz='center', wrapWidth=30)
+        # self.main_text.font = 'Open Sans'
+        # Reward value text
+        self.outcome_text = visual.TextStim(win=self.win, height=1.5, color='white',
+                                         pos=(0, 7), wrapWidth=30)
+        # self.outcome_text.font = 'Open Sans'
+        # Instruction text
+        self.instruction_text = visual.TextStim(win=self.win, height=0.8, color='white', wrapWidth=30)
+        # self.instruction_text.font = 'Open Sans'
+
+
+        # Image stimuli
+
+        # Image-related settings
+        self.locs = [(-9, 0), (0, 0), (9, 0)]  # TODO config file?
+        self.image_size = self.config['image sizes']['size_image_size']
+        self.arrow_gap = self.config['arrow positions']['arrow_gap']  # gap between arrows
+
+        # Find image files
+
+        # Images used for displaying arrows
+        self.arrow_images = {}
+        for n in self.response_keys:
+            self.arrow_images[n] = os.path.join(self.config['directories']['arrow_path'], '{0}.png'.format(n))
+        # State image files
         stimuli_location = self.config['directories']['stimuli_path']
         self.stimuli = [os.path.join(stimuli_location, i) for i in os.listdir(stimuli_location)
                    if ('.png' in i or '.jpg' in i or '.jpeg' in i) and 'shock' not in i]
-        # print self.stimuli
-        random.shuffle(self.stimuli)
 
-        # positions are given as (x units, y units) - here we're putting three of these coordinate pairs in a list
-        self.locs = [(-9, 0), (0, 0), (9, 0)]  # store preset positions for use later
+        random.shuffle(self.stimuli)  # make sure stimuli are randomly assigned to states
 
-        # sizes are given as (width, height)
-        self.image_size = self.config['image sizes']['size_image_size']
-        self.outcome_image = visual.ImageStim(win=self.win, size=self.config['image sizes']['size_outcome_image'], image='Stimuli/shock.png', pos=(0, 7))
+        # Create some ImageStim instances
 
-        # use imagestim to set up image stimuli - you'll need to fill in some details here
+        self.outcome_image = visual.ImageStim(win=self.win, size=self.config['image sizes']['size_outcome_image'],
+                                              image='Stimuli/shock.png', pos=(0, 7))
         self.display_image = visual.ImageStim(win=self.win, size=self.config['image sizes']['size_display_image'])
-
         self.arrow_display = visual.ImageStim(win=self.win, size=self.config['image sizes']['size_arrow_display'])
-
-        self.arrow_gap = self.config['arrow positions']['arrow_gap']
-
-        self.n_moves = self.config['durations']['n_moves']
-        #
-        self.n_training_trials = self.config['number training trials']['n_training_trials']
-
-        # on each loop, append an image stimulus to the list
-
-        # TRANSITION MATRIX
-
-        self.matrix, self.matrix_keys = self.create_matrix()
-
-        #circle
-
         self.circle = visual.Circle(win=self.win, radius=1, fillColor=None, lineColor=[1, 1, 1], pos=(0, -8))
 
+        # Create the arrow stimuli
         self.arrow_positions, self.arrow_progress = self.create_arrows(self.n_moves)
-
 
     def create_arrows(self, n):
 
@@ -213,7 +206,6 @@ class ReplayExperiment(object):
 
         """
 
-
         # set image
         self.display_image.image = picture
 
@@ -226,20 +218,12 @@ class ReplayExperiment(object):
         elif t > shock_time and shock == 1:
             self.outcome_image.draw()
 
-
-
-        # show reward text
-        # self.reward_text.text = reward
-
         if show_moves:
             for i in range(self.n_moves):
                 self.arrow_progress[i].draw()
 
-        # draw on each iteration
-
         # draw everything
         self.display_image.draw()
-        # self.reward_text.draw()
 
     def instructions(self, text, max_wait=2):
 
@@ -254,13 +238,11 @@ class ReplayExperiment(object):
 
         """
 
-
         # set text
         self.instruction_text.text = text
         # draw
         self.instruction_text.draw()
         self.win.flip()
-        # waitkeys
         event.waitKeys(maxWait=max_wait, keyList='space')
 
 
@@ -274,7 +256,6 @@ class ReplayExperiment(object):
         """
 
         matrix = np.loadtxt(self.config['directories']['matrix'])
-
 
         matrix_keys = matrix.astype(int).astype(str)
         keys = ['up', 'down', 'left', 'right']
