@@ -11,6 +11,7 @@ import random
 
 
 
+
 class ReplayExperiment(object):
 
     def __init__(self, config=None):
@@ -127,6 +128,13 @@ class ReplayExperiment(object):
         self.n_moves = self.config['durations']['n_moves']
         #
         self.n_training_trials = self.config['number training trials']['n_training_trials']
+
+        self.trial_info = pd.read_csv(self.config['directories']['trial_info'])
+        self.trial_info = self.trial_info.round(2)
+
+        self.reward_info = self.trial_info[[c for c in self.trial_info.columns if 'reward' in c or c == 'trial_number']]
+        self.shock_info = self.trial_info[[c for c in self.trial_info.columns if 'shock' in c or c == 'trial_number']]
+
 
         # on each loop, append an image stimulus to the list
 
@@ -259,9 +267,10 @@ class ReplayExperiment(object):
         self.instruction_text.text = text
         # draw
         self.instruction_text.draw()
-        self.win.flip()
         # waitkeys
-        event.waitKeys(maxWait=max_wait, keyList='space')
+        if max_wait > 0:
+            self.win.flip()
+            event.waitKeys(maxWait=max_wait, keyList='space')
 
 
     def create_matrix(self):
@@ -514,6 +523,8 @@ class ReplayExperiment(object):
         test_moves = np.repeat(['up', 'down', 'left', 'right'], 5)
 
 
+
+
         #if self.instruction_duration is True:
         #     self.instruction_text.text = "Welcome to the MEG thing"
         #     self.instruction_text.draw()
@@ -528,14 +539,13 @@ class ReplayExperiment(object):
 
 
 
-        text = "Welcome to MEG thing! Insert instructions here. Press spacebar to continue."
+        text = "Welcome! In this task you will be asked to  Press spacebar to continue."
 
         self.instructions(text)
 
+        for i in range(len(self.trial_info)):  # TRIAL LOOP - everything in here is repeated each trial
 
-        for i in range(len(trial_info)):  # TRIAL LOOP - everything in here is repeated each trial
-
-            print "Trial {0} / {1}".format(i, len(trial_info))
+            print "Trial {0} / {1}".format(i + 1, len(trial_info))
 
             # self.io.clearEvents('all')  # clear keyboard events
 
@@ -546,22 +556,22 @@ class ReplayExperiment(object):
                             self.pre_move_duration + self.move_entering_duration, self.start_duration +
                             self.pre_move_duration + self.move_entering_duration + self.move_period_duration]  # list of times at which the screen should change
 
-
+            outcome_only_change_times = [0, self.config['durations']['outcome_only_text_duration'],
+                                         self.config['durations']['outcome_only_text_duration'] +
+                                         self.config['durations']['outcome_only_duration']]
 
             # Starting state
             start_state = 0
             self.display_image.setImage(self.stimuli[start_state])
             states = None
 
-            # rewards
-            outcome = self.config['reward outcomes']['outcome']
-            reward = [0] * self.n_moves
+            # get reward values
+            outcome = [''] * (self.matrix.shape[0] - (self.reward_info.shape[1] - 1))
+            outcome += self.reward_info[[c for c in self.reward_info.columns if 'reward' in c]].iloc[i, :].tolist()
+            print outcome
 
-            shock_outcome = [0] * 13
-            shock_outcome[0] = 1
-            random.shuffle(shock_outcome)
-            shock = [0] * self.n_moves
-
+            shock_outcome = [0] * (self.matrix.shape[0] - (self.shock_info.shape[1] - 1))
+            shock_outcome += self.shock_info[[c for c in self.shock_info.columns if 'shock' in c]].iloc[i, :].tolist()
 
             # Default values for responses in case the subject makes no response
             response = None
@@ -575,16 +585,6 @@ class ReplayExperiment(object):
 
             moves_to_enter = []
 
-            # TODO if else statement - depends on trial_type, if trial_type == 'outcome'
-            # set trial number to randomly show an outcome only, will have to set one of the trial numbers
-            # to one that tells code to show the outcome only?
-            # FOR NOW just get it to show an image, then show just the outcome
-
-
-               # picture = 'car.jpg'
-               # self.show_move(picture).draw()
-
-
             while not moves_found:
                 random.shuffle(test_moves)
                 moves_to_enter = self.test_moves(start_state, self.n_moves)
@@ -593,25 +593,28 @@ class ReplayExperiment(object):
 
             key_text = 'Enter key movements\n{0}'.format(moves_to_enter)
 
-            ## testing
+            # testing
             outcome_state = 10
 
             while continue_trial:  # run the trial
 
                 t = self.clock.getTime()  # get the time
 
-                if i == 1 and t < 3:
-                    # self.display_image.setImage('Stimuli/car.jpg')
-                    # self.display_image.draw()
+                if self.trial_info['trial_type'][i] == 1 and t < outcome_only_change_times[1]:
+                    print "A", t
+                    text = "Outcome only"
+                    self.instructions(text, max_wait=0)
+
+                elif self.trial_info['trial_type'][i] == 1 and (outcome_only_change_times[1] <= t <
+                                                                outcome_only_change_times[2]):
+                    print "B", t
                     outcome_only = outcome[outcome_state]
-                    self.show_move(outcome_only, shock[n], self.stimuli[outcome_state], 0, t,
+                    print outcome_only
+                    shock_only = shock_outcome[outcome_state]
+                    self.show_move(outcome_only, shock_only, self.stimuli[outcome_state], 0, t,
                                    2, show_moves=False)
-                    # self.outcome_text.text = outcome_only
-                    # #random.shuffle(self.config['reward outcomes']['outcome'])
-                    # self.outcome_text.draw()
 
-
-                elif i == 1 and t >= 3:
+                elif self.trial_info['trial_type'][i] == 1 and t >= outcome_only_change_times[2]:
                     continue_trial = False
 
                 else:
@@ -667,8 +670,7 @@ class ReplayExperiment(object):
                             for n, (move, state) in enumerate(moves_states):
                                 print n, move, state
                                 if change_times[3] + n * self.move_duration <= t < change_times[3] + (n + 1) * self.move_duration:
-                                    shock[n] = shock_outcome[state]
-                                    self.show_move(outcome[state], shock[n], self.stimuli[state], move, t,
+                                    self.show_move(outcome[state], shock_outcome[state], self.stimuli[state], move, t,
                                                    change_times[3] + n * self.move_duration + self.move_duration / 2.)
                                     self.circle.pos = (self.arrow_positions[n], self.circle.pos[1])
 
