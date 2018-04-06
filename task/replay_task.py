@@ -136,6 +136,13 @@ class ReplayExperiment(object):
         #
         self.n_training_trials = self.config['number training trials']['n_training_trials']
 
+        self.trial_info = pd.read_csv(self.config['directories']['trial_info'])
+        self.trial_info = self.trial_info.round(2)
+
+        self.reward_info = self.trial_info[[c for c in self.trial_info.columns if 'reward' in c or c == 'trial_number']]
+        self.shock_info = self.trial_info[[c for c in self.trial_info.columns if 'shock' in c or c == 'trial_number']]
+
+
         # on each loop, append an image stimulus to the list
 
         # TRANSITION MATRIX
@@ -258,11 +265,8 @@ class ReplayExperiment(object):
         # draw
         self.instruction_text.draw()
         self.win.flip()
-        event.waitKeys(maxWait=max_wait, keyList='space')
         # waitkeys
-        if max_wait > 0:
-            self.win.flip()
-            event.waitKeys(maxWait=max_wait, keyList='space')
+        event.waitKeys(maxWait=max_wait, keyList='space')
 
 
     def create_matrix(self):
@@ -529,11 +533,11 @@ class ReplayExperiment(object):
 
 
 
-        text = "Welcome to MEG thing! Insert instructions here. Press spacebar to continue."
+        text = "Welcome! In this task you will be asked to  Press spacebar to continue."
 
         self.instructions(text)
 
-        for i in range(len(trial_info)):
+        for i in range(len(self.trial_info)):  # TRIAL LOOP - everything in here is repeated each trial
 
             print "Trial {0} / {1}".format(i + 1, len(trial_info))
 
