@@ -37,9 +37,18 @@ previous_state = None
 for i in range(0, 10):
     print previous_state
     print "Move {0}, start = {1}".format(i, start)
-    print [i for n, i in enumerate(matrix_keys[start, :]) if not '0' in i and not n == previous_state]
+    allowed_moves = [i for n, i in enumerate(matrix_keys[start, :]) if not '0' in i and not n == previous_state]
     row = matrix_keys[start, :]
     response = raw_input("Enter move")
     next_state = np.where(row == response)
     previous_state = start
     start = next_state[0][0]
+
+import seaborn as sns
+sns.heatmap(matrix)
+
+import random
+random.seed(2)
+a = range(10)
+random.shuffle(a)
+print a

@@ -127,5 +127,6 @@ trial_type = np.hstack([np.ones(n_outcome_trials), np.zeros(n_trials - n_outcome
 np.random.shuffle(trial_type)
 trial_info['trial_type'] = trial_type
 trial_info[trial_info.isnull()] = 0
+trial_info['end_state'] = np.random.randint(7, 11, len(trial_info))
 
 trial_info.to_csv('task/Task_information/trial_info.csv', index=False)
