@@ -117,7 +117,7 @@ class ReplayExperiment(object):
 
         monitor = monitors.Monitor('test2', width=40.92, distance=74)
         monitor.setSizePix((1024, 768))
-        self.win = visual.Window(monitor=monitor, size=(1024, 768), fullscr=True, allowGUI=False, color='#606060', units='deg',
+        self.win = visual.Window(monitor=monitor, size=(1024, 768), fullscr=True, allowGUI=False, color='gray', units='deg',
                             colorSpace='hex')
         self.win.mouseVisible = False  # make the mouse invisible
 
@@ -641,7 +641,7 @@ class ReplayExperiment(object):
                             self.response_data['RT_{0}'.format(n + 1)] = np.nan
                         self.response_data['Reward'] = outcome_only
                         self.response_data['Shock'] = shock_only
-                    else:
+                    elif moves_states is not False:
                         for n, (move, state) in enumerate(moves_states):
                             self.response_data['Move_{0}'.format(n + 1)] = move
                             self.response_data['State_{0}'.format(n + 1)] = state
@@ -653,7 +653,7 @@ class ReplayExperiment(object):
                         csvWriter([self.response_data[category] for category in self.data_keys])  # Write data
                     else:
                         # In the test phase, figure out whether they got to the correct state
-                        if moves_states[-1][1] == end_state:
+                        if moves_states is not False and moves_states[-1][1] == end_state:
                             n_successes += 1
                         else:
                             n_successes = 0

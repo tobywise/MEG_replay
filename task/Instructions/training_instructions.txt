@@ -4,6 +4,6 @@ You will first be guided through a training.
 
 *The goal of the training is to become familiar with the pictures before beginning the task.
 
-*The training will last about X minutes, and you will navigate using the arrow keys. The possible moves will be displayed on the screen as arrows, and these arrows correspond to the arrows on the arrow keys. To begin, press the spacebar. If you have a question or want to stop, press SOMETHING to pause.
+*The training will last about 10 minutes, and you will navigate using the arrow keys. The possible moves will be displayed on the screen as arrows, and these arrows correspond to the arrows on the arrow keys. To begin, press the spacebar. If you have a question or want to stop, press the spacebar to pause.
 
 *If you don't have any questions, press the spacebar to begin.

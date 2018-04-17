@@ -1,7 +1,7 @@
 Welcome!
 
 In this task you will be asked to move through a series of pictures. In each trial, you will be able to make three moves.
-After entering your movements, you will be shown the images you have just moved through. Upon display of the third a final image, you will see a monetary reward value. You will only see rewards associated with this third image.
+After entering your movements, you will be shown the images you have just moved through. Upon display of the third and final image, you will see a monetary reward value. You will only see rewards associated with this third image.
 
 *Your goal is to find the image that has the highest reward value. Across trials, however, the image associated with the highest reward value will change frequently. This reward will be added to your total, and a new trial will begin.
 
