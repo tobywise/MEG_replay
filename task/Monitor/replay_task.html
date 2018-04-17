@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" type="text/css" href="replay_task.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <meta charset="UTF-8">
+    <title>Replay task monitor</title>
+</head>
+<body>
+
+<script>
+
+    $(document).ready(function(){
+
+        xhr = new XMLHttpRequest();
+        xhr.open("GET","maze_diagram_26_03_18.svg",false);
+        xhr.overrideMimeType("image/svg+xml");
+        xhr.send("");
+        console.log(xhr.responseXML);
+        document.getElementById("svgContainer")
+            .appendChild(xhr.responseXML.documentElement);
+
+        document.getElementById("svg4821").classList.add("svg__img");
+
+        var svg_elements = document.getElementById("svg4821").getElementById("layer1");
+
+        for (var i = 0; i < 11; i++) {
+            console.log(i);
+            svg_elements.querySelector("#circle_" + i).style.transition = 'all 1s ease 0s';
+        }
+
+    });
+
+
+    $(function() {
+        function load_json() {
+            $.getJSON("replay_task_output_json.txt", function (json) {
+                var svg_elements = document.getElementById("svg4821").getElementById("layer1");
+
+                console.log(json);
+                console.log("AA");
+                $('#header2').text("Trial " + json.Trial + " / " + json.Total_trials + ' : ' + json.Phase);
+                $('#subject').text("Subject  " + json.Subject);
+
+                var moves = json.Moves;
+                var valid = json.Valid;
+
+                if (json.Phase != 'Planning') {
+
+                    if (valid == true) {
+
+                        for (var i = 0; i < moves.length; i += 1) {
+                            svg_elements.querySelector("#circle_" + moves[i]).style.stroke = '#69b3ff';
+                        }
+
+                    }
+
+                    else {
+                        svg_elements.querySelector("#circle_0").style.stroke = 'red';
+                    }
+                }
+
+                else {
+                    for (var i = 0; i < 11; i++) {
+                        svg_elements.querySelector("#circle_" + i).style.stroke = '#b4b4b4';
+                    }
+                }
+
+                var rewards = json.Reward;
+                var shock = json.Shock;
+
+                for (var i=0; i<rewards.length; i++) {
+                    svg_elements.querySelector("#outcome_" + i).textContent = rewards[i];
+                    svg_elements.querySelector("#outcome_" + i).style.fontSize = 30;
+                    if (shock[i] == 1) {
+                        svg_elements.querySelector("#outcome_" + i).style.fill = '#fe9100';
+                    }
+                }
+
+                // Alert if experiment stopped or paused
+
+                if (json.Stopped == 'Escape') {
+                    alert("EXPERIMENT QUIT");
+                }
+
+                if (json.Stopped == 'Space') {
+                    alert("EXPERIMENT PAUSED");
+                }
+
+                if (json.Stopped == 'Crash') {
+                    alert("EXPERIMENT ENDED");
+                }
+
+            });
+        }
+        setInterval(load_json, 5000);
+        load_json();
+    });
+
+</script>
+
+<div class="task">
+    <header class="task__header">
+        <h2 class="task__title" id="header">Task progress</h2>
+        <h3 class="trial__number" id="header2">Trial n / X : Phase</h3>
+
+    </header>
+
+    <div id="svgContainer" class="svg__container">
+    </div>
+
+    <p class="subject__id" id="subject"></p>
+
+</div>
+
+
+
+
+</body>
+</html>

@@ -9,7 +9,7 @@ import yaml
 import numpy as np
 import random
 import networkx as nx
-
+import json
 
 class ReplayExperiment(object):
 
@@ -244,6 +244,12 @@ class ReplayExperiment(object):
         self.win.flip()
         core.wait(10)
 
+    def run_training(self):
+
+        try:
+            self._run_training()
+        except:
+            self.save_json(1, 1, 'Crash', False, None, None, None, self.subject_id, stopped='Crash')
 
     def run_test(self):
 
@@ -252,8 +258,10 @@ class ReplayExperiment(object):
 
         """
 
-        self._run_task(test=True, instructions=self.test_instructions, trial_info=self.trial_info_test)
-
+        try:
+            self._run_task(test=True, instructions=self.test_instructions, trial_info=self.trial_info_test)
+        except:
+            self.save_json(1, 1, 'Crash', False, None, None, None, self.subject_id, stopped='Crash')
 
     def run_task(self):
 
@@ -262,10 +270,13 @@ class ReplayExperiment(object):
 
         """
 
-        self._run_task(instructions=self.task_instructions, trial_info=self.trial_info)
+        try:
+            self._run_task(instructions=self.task_instructions, trial_info=self.trial_info)
+        except:
+            self.save_json(1, 1, 'Crash', False, None, None, None, self.subject_id, stopped='Crash')
 
 
-    def run_training(self):
+    def _run_training(self):
 
         """
         Runs the training phase of the experiment
@@ -284,8 +295,8 @@ class ReplayExperiment(object):
 
         test_moves = np.repeat(['up', 'down', 'left', 'right'], 5)
 
-
-        self.grand_instructions(self.training_instructions)
+        if self.mode == 'Experiment':
+            self.grand_instructions(self.training_instructions)
 
         start_state = [0]
         random.shuffle(start_state)
@@ -298,6 +309,8 @@ class ReplayExperiment(object):
 
             text = "Starting new trial"
             self.instructions(text)
+
+            monitoring_saved = {'Test': False}
 
             for i in range(self.n_moves + 1):  # TRIAL LOOP - everything in here is repeated each trial
 
@@ -351,6 +364,10 @@ class ReplayExperiment(object):
                     self.circle.draw()
                     for n, i in enumerate(moves_to_enter):
                         training_arrows[n].draw()
+
+                    if not monitoring_saved['Training']:
+                        monitoring_saved['Training'] = self.save_json(i + 1, self.n_training_trials, 'Outcome only',
+                                                                      True, start_state, None, None, self.subject_id)
                 else:
                     start_state = 0
 
@@ -361,6 +378,7 @@ class ReplayExperiment(object):
 
                 # quit if subject pressed scape
                 if key in ['escape', 'esc']:
+                    self.save_json(i + 1, 0, 'Rest', False, None, None, None, self.subject_id, stopped='Space')
                     core.quit()
 
             core.wait(1)
@@ -409,6 +427,9 @@ class ReplayExperiment(object):
         # Number of successes in test phase
         n_successes = 0
 
+        # Track which monitoring data we've saved
+        monitoring_saved = {'Planning': False, 'Moves': False, 'Rest': False, 'Outcome': False, 'Pause': False}
+
         for i in range(len(trial_info)):  # TRIAL LOOP - everything in here is repeated each trial
 
             # In the test phase, break when subject gets enough trials correct
@@ -455,13 +476,13 @@ class ReplayExperiment(object):
                 shock_outcome += self.shock_info[[c for c in self.shock_info.columns if 'shock' in c]].iloc[i, :].tolist()
 
             # Default values for responses in case the subject makes no response
-            response = None
             rt = None
             key = None
             trial_moves = []
             move_rts = []
             moves_found = False
             moves_to_enter = []
+            valid_moves = False
 
             # Identifies and shows valid trajectories - used for testing
             if self.show_valid_moves:
@@ -498,6 +519,10 @@ class ReplayExperiment(object):
                         text = "Outcome only"
                         self.instructions(text, max_wait=0)
 
+                        if not monitoring_saved['Outcome']:
+                            monitoring_saved['Outcome'] = self.save_json(i+1, len(trial_info), 'Outcome only', None, None,
+                                                                         outcome, shock_outcome, self.subject_id)
+
                     # Show outcome
                     elif outcome_only_change_times[1] <= t < outcome_only_change_times[2]:
                         outcome_only = outcome[outcome_state]
@@ -521,6 +546,10 @@ class ReplayExperiment(object):
                             self.show_start_end_move()
                         else:
                             self.display_image.draw()
+
+                        if not monitoring_saved['Planning']:
+                            monitoring_saved['Planning'] = self.save_json(i+1, len(trial_info), 'Planning', None, None,
+                                                                         outcome, shock_outcome, self.subject_id)
 
                     # Move entering warning
                     elif change_times[1] <= t < change_times[2]:
@@ -565,6 +594,7 @@ class ReplayExperiment(object):
                             self.main_text.text = "Too few moves entered"
                             self.main_text.draw()
                         else:
+                            valid_moves = True
                             for n, (move, state) in enumerate(moves_states):
                                 if change_times[3] + n * self.move_duration <= t < change_times[3] + (n + 1) * self.move_duration:
                                     self.show_move(outcome[state], shock_outcome[state], self.stimuli[state], t,
@@ -573,9 +603,19 @@ class ReplayExperiment(object):
 
                                     self.circle.draw()
 
+                        if not monitoring_saved['Moves']:
+                            monitoring_saved['Moves'] = self.save_json(i+1, len(trial_info), 'Moves', valid_moves,
+                                                                       [i[1] for i in moves_states], outcome,
+                                                                       shock_outcome, self.subject_id)
+
                     # Rest period
                     elif change_times[4] <= t < change_times[5]:
                         self.fixation.draw()
+
+                        if not monitoring_saved['Rest']:
+                            monitoring_saved['Rest'] = self.save_json(i+1, len(trial_info), 'Rest', valid_moves,
+                                                                       [i[1] for i in moves_states], outcome,
+                                                                       shock_outcome, self.subject_id)
 
                     # End trial
                     elif t >= change_times[-1]:
@@ -620,10 +660,15 @@ class ReplayExperiment(object):
                     self.instruction_text.setText("Experiment paused")
                     self.instruction_text.draw()
                     self.win.flip()
+                    if not monitoring_saved['Pause']:
+                        monitoring_saved['Pause'] = self.save_json(i + 1, len(trial_info), 'Pause', valid_moves,
+                                                                  None, None, None, self.subject_id, stopped='Space')
                     event.waitKeys(['space', ' '])
 
                 # quit if subject pressed scape
                 if event.getKeys(["escape"]):
+                    self.save_json(i + 1, len(trial_info), 'Escape', valid_moves, None, None, None, self.subject_id,
+                                   stopped='Escape')
                     core.quit()
 
 
@@ -882,6 +927,18 @@ class ReplayExperiment(object):
         self.display_image.draw()
         self.display_image_test.draw()
         self.test_arrow.draw()
+
+    def save_json(self, trial_number, total_trials, phase, valid_moves, moves, reward, shock, subject, stopped="None"):
+
+        json_data = {"Trial": trial_number, "Total_trials": total_trials, "Stopped": stopped, "Phase": phase,
+                     "Valid": valid_moves, "Moves": moves, "Reward": reward, "Shock": shock,  "Subject": subject}
+
+        try:
+            with open('//cher/twise/web/replay_task_output_json.txt', 'w') as f:
+                json.dump(json_data, f)
+            return True
+        except:
+            pass
 
 
 ## RUN THE EXPERIMENT

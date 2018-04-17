@@ -1,0 +1,55 @@
+/* Font from Google fonts */
+@import url("https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,900");
+/* Color palette */
+/* Basic styles */
+html, body {
+    height: 100%;
+    font-family: 'Source Sans Pro', sans-serif;
+    background-color: #efefef;
+    color: #303030;
+}
+
+
+.task {
+    max-width: 30vw;
+    margin: 5vw auto;
+}
+
+.task__title {
+    font-size: 2vw;
+    margin: 0.5vw 0;
+}
+
+.trial__number {
+    font-size: 1.5vw;
+    margin: 0.5vw 0;
+    font-weight: 500;
+}
+
+.subject__id {
+    font-size: 1.2vw;
+    margin: 0vw 0;
+    font-weight: 400;
+    color: gray;
+}
+
+.svg__container {
+    position: relative;
+    height: 0;
+    width: 100%;
+    padding: 0;
+    padding-bottom: 100%;
+}
+
+.svg__img {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    left: 0;
+    top: 0;
+}
+
+.circle {
+    stroke-width: 400;
+}
+

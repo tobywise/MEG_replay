@@ -1,0 +1,7 @@
+This next phase will test your knowledge of the task.
+
+*You will move through the pictures using the arrow keys. You'll two images on the screen, and then it is up to you to move from the first image to the second one using what you learned about the pictures in the training.
+
+*You will enter three movements with the arrow keys, then you will be shown which pictures you have moved through. The moves you make will be displayed as arrows on the screen as you press the arrow keys. When the third image is displayed on the screen, you will be shown feedback to indicate whether you were successful in getting to the correct image.
+
+*If you don't have any questions, press the spacebar to begin.

@@ -1,0 +1,2 @@
+{"Trial" : 23, "Total_trials": 160, "Stopped": "None", "Phase": "Moves",
+"Valid": true, "Moves": [0, 1, 4, 8],"Reward": [0.12, 0.17, 0.78, 0.88], "Shock": [0, 0, 1, 0], "Subject": 1003}
