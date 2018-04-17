@@ -206,13 +206,14 @@ class ReplayExperiment(object):
         """
 
         # Show main instructions
+        print "A"
         if self._run_instructions:
             self.show_starting_instructions()
-
+        print "B"
         # Run training
         if self._run_training:
             self.run_training()
-
+        print "C"
         # Run test phase
         if self._run_test:
             self.run_test()
@@ -247,9 +248,10 @@ class ReplayExperiment(object):
     def run_training(self):
 
         try:
-            self._run_training()
+            self.__run_training()
         except:
             self.save_json(1, 1, 'Crash', False, None, None, None, self.subject_id, stopped='Crash')
+            raise
 
     def run_test(self):
 
@@ -259,9 +261,10 @@ class ReplayExperiment(object):
         """
 
         try:
-            self._run_task(test=True, instructions=self.test_instructions, trial_info=self.trial_info_test)
+            self.__run_task(test=True, instructions=self.test_instructions, trial_info=self.trial_info_test)
         except:
             self.save_json(1, 1, 'Crash', False, None, None, None, self.subject_id, stopped='Crash')
+            raise
 
     def run_task(self):
 
@@ -271,12 +274,13 @@ class ReplayExperiment(object):
         """
 
         try:
-            self._run_task(instructions=self.task_instructions, trial_info=self.trial_info)
+            self.__run_task(instructions=self.task_instructions, trial_info=self.trial_info)
         except:
             self.save_json(1, 1, 'Crash', False, None, None, None, self.subject_id, stopped='Crash')
+            raise
 
 
-    def _run_training(self):
+    def __run_training(self):
 
         """
         Runs the training phase of the experiment
@@ -310,7 +314,7 @@ class ReplayExperiment(object):
             text = "Starting new trial"
             self.instructions(text)
 
-            monitoring_saved = {'Test': False}
+            monitoring_saved = {'Training': False}
 
             for i in range(self.n_moves + 1):  # TRIAL LOOP - everything in here is repeated each trial
 
@@ -365,9 +369,9 @@ class ReplayExperiment(object):
                     for n, i in enumerate(moves_to_enter):
                         training_arrows[n].draw()
 
-                    if not monitoring_saved['Training']:
-                        monitoring_saved['Training'] = self.save_json(i + 1, self.n_training_trials, 'Outcome only',
-                                                                      True, start_state, None, None, self.subject_id)
+                    # if not monitoring_saved['Training']:
+                    #     monitoring_saved['Training'] = self.save_json(i + 1, self.n_training_trials, 'Outcome only',
+                    #                                                   True, start_state, None, None, self.subject_id)
                 else:
                     start_state = 0
 
@@ -384,7 +388,7 @@ class ReplayExperiment(object):
             core.wait(1)
 
 
-    def _run_task(self, test=False, instructions=None, trial_info=None):
+    def __run_task(self, test=False, instructions=None, trial_info=None):
 
         """
         Method used to run the main task - used by both the task and test phases
@@ -519,9 +523,9 @@ class ReplayExperiment(object):
                         text = "Outcome only"
                         self.instructions(text, max_wait=0)
 
-                        if not monitoring_saved['Outcome']:
-                            monitoring_saved['Outcome'] = self.save_json(i+1, len(trial_info), 'Outcome only', None, None,
-                                                                         outcome, shock_outcome, self.subject_id)
+                        # if not monitoring_saved['Outcome']:
+                        #     monitoring_saved['Outcome'] = self.save_json(i+1, len(trial_info), 'Outcome only', None, None,
+                        #                                                  outcome, shock_outcome, self.subject_id)
 
                     # Show outcome
                     elif outcome_only_change_times[1] <= t < outcome_only_change_times[2]:
@@ -603,19 +607,19 @@ class ReplayExperiment(object):
 
                                     self.circle.draw()
 
-                        if not monitoring_saved['Moves']:
-                            monitoring_saved['Moves'] = self.save_json(i+1, len(trial_info), 'Moves', valid_moves,
-                                                                       [i[1] for i in moves_states], outcome,
-                                                                       shock_outcome, self.subject_id)
+                        # if not monitoring_saved['Moves']:
+                        #     monitoring_saved['Moves'] = self.save_json(i+1, len(trial_info), 'Moves', valid_moves,
+                        #                                                [i[1] for i in moves_states], outcome,
+                        #                                                shock_outcome, self.subject_id)
 
                     # Rest period
                     elif change_times[4] <= t < change_times[5]:
                         self.fixation.draw()
 
-                        if not monitoring_saved['Rest']:
-                            monitoring_saved['Rest'] = self.save_json(i+1, len(trial_info), 'Rest', valid_moves,
-                                                                       [i[1] for i in moves_states], outcome,
-                                                                       shock_outcome, self.subject_id)
+                        # if not monitoring_saved['Rest']:
+                        #     monitoring_saved['Rest'] = self.save_json(i+1, len(trial_info), 'Rest', valid_moves,
+                        #                                                [i[1] for i in moves_states], outcome,
+                        #                                                shock_outcome, self.subject_id)
 
                     # End trial
                     elif t >= change_times[-1]:
