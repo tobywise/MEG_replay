@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import division
-from psychopy import core, visual, event, gui, monitors, data
+from psychopy import core, visual, event, gui, monitors, data, logging
 import pandas as pd
 import os, csv
 import yaml
@@ -10,13 +10,14 @@ import random
 import networkx as nx
 import json
 import ctypes
+import time
 
 class ParallelPort(object):
 
     def __init__(self, port=888, test=False):
         self.test = test
         if not self.test:
-            self._parallel = ctypes.WinDLL('')
+            self._parallel = ctypes.WinDLL('simpleio.dll')
         self.port = port
 
     def setData(self, data=0):
@@ -55,7 +56,7 @@ class ReplayExperiment(object):
         dialogue.addField('Training', initial=True)
         dialogue.addField('Test', initial=True)
         dialogue.addField('Task', initial=True)
-        dialogue.addField('Parallel port', initial=True)
+        dialogue.addField('Parallel port testing', initial=False)
         dialogue.show()
 
         # check that values are OK and assign them to variables
@@ -138,6 +139,20 @@ class ReplayExperiment(object):
         self.win = visual.Window(monitor=monitor, size=(1024, 768), fullscr=True, allowGUI=False, color='gray', units='deg',
                             colorSpace='hex')
         self.win.mouseVisible = False  # make the mouse invisible
+
+        self.win.recordFrameIntervals = True
+
+        # By default, the threshold is set to 120% of the estimated refresh
+        # duration, but arbitrary values can be set.
+        #
+        # I've got 85Hz monitor and want to allow 4 ms tolerance; any refresh that
+        # takes longer than the specified period will be considered a "dropped"
+        # frame and increase the count of win.nDroppedFrames.
+        self.win.refreshThreshold = 1/60. + 0.004
+
+        # Set the log module to report warnings to the standard output window
+        # (default is errors only).
+        logging.console.setLevel(logging.WARNING)
 
         # Keys used for making moves
         self.response_keys = self.config['response keys']['response_keys']
@@ -503,6 +518,7 @@ class ReplayExperiment(object):
                 outcome += self.reward_info[[c for c in self.reward_info.columns if 'reward' in c]].iloc[i, :].tolist()
                 shock_outcome = [0] * (self.matrix.shape[0] - (self.shock_info.shape[1] - 1))
                 shock_outcome += self.shock_info[[c for c in self.shock_info.columns if 'shock' in c]].iloc[i, :].tolist()
+                shock_outcome = [1] * self.matrix.shape[0]
 
             # Default values for responses in case the subject makes no response
             rt = None
@@ -512,7 +528,8 @@ class ReplayExperiment(object):
             moves_found = False
             moves_to_enter = []
             valid_moves = False
-            shocks_given = 0
+            self.shocks_given = 0
+            progress_arrows_set = False
 
             # Identifies and shows valid trajectories - used for testing
             if self.show_valid_moves:
@@ -535,9 +552,9 @@ class ReplayExperiment(object):
             # Outcome only trials outcome state
             if trial_info['trial_type'][i] == 1:
                 outcome_state = trial_info['end_state'][i]
-
+            
             while continue_trial:  # run the trial
-
+                start = time.time()
                 t = self.clock.getTime()  # get the time
 
                 # OUTCOME ONLY TRIALS
@@ -559,7 +576,7 @@ class ReplayExperiment(object):
                         shock_only = shock_outcome[outcome_state]
                         self.show_move(outcome_only, shock_only, self.stimuli[outcome_state], t,
                                        outcome_only_change_times[1] + self.config['durations']['outcome_only_duration'] / 2.,
-                                       show_moves=False, shock_delay=self.shock_delay, shocks_given=shocks_given)
+                                       show_moves=False, shock_delay=self.shock_delay)
 
                     # End trial
                     elif outcome_only_change_times[2] <= t < outcome_only_change_times[3]:
@@ -570,6 +587,7 @@ class ReplayExperiment(object):
                         continue_trial = False
 
                 else:
+
                     # Show start state
                     if change_times[0] <= t < change_times[1]:
                         if test:
@@ -580,7 +598,7 @@ class ReplayExperiment(object):
                         if not monitoring_saved['Planning']:
                             monitoring_saved['Planning'] = self.save_json(i+1, len(trial_info), 'Planning', None, None,
                                                                          outcome, shock_outcome, self.subject_id)
-
+                                                      
                     # Move entering warning
                     elif change_times[1] <= t < change_times[2]:
                         self.main_text.text = key_text
@@ -608,21 +626,24 @@ class ReplayExperiment(object):
                                 self.arrow_display.draw()
 
                     # Show moves
+                    
                     elif change_times[3] <= t < change_times[4]:
                         if states is None:
                             moves_states = self.moves_to_states(trial_moves, start_state)
                             # loop through their moves (trial_moves)
-                        for n, key in enumerate(trial_moves):
-                            self.arrow_progress[n].image = self.arrow_images[key]
-
-
+                        if not progress_arrows_set: 
+                            for n, key in enumerate(trial_moves):
+                                self.arrow_progress[n].image = self.arrow_images[key]
+                            progress_arrows_set = True
                         # Wrong moves or too few moves
                         if moves_states is False:
                             self.main_text.text = "Wrong moves entered"
                             self.main_text.draw()
                         elif len(trial_moves) < self.n_moves:
+                            moves_states = False
                             self.main_text.text = "Too few moves entered"
                             self.main_text.draw()
+                        
                         else:
                             valid_moves = True
                             for n, (move, state) in enumerate(moves_states):
@@ -630,14 +651,13 @@ class ReplayExperiment(object):
                                     self.show_move(outcome[state], shock_outcome[state], self.stimuli[state], t,
                                                    change_times[3] + n * self.move_duration + self.move_duration / 2.)
                                     self.circle.pos = (self.arrow_positions[n], self.circle.pos[1])
-
                                     self.circle.draw()
-
+                        
                         # if not monitoring_saved['Moves']:
                         #     monitoring_saved['Moves'] = self.save_json(i+1, len(trial_info), 'Moves', valid_moves,
                         #                                                [i[1] for i in moves_states], outcome,
                         #                                                shock_outcome, self.subject_id)
-
+                         
                     # Rest period
                     elif change_times[4] <= t < change_times[5]:
                         self.fixation.draw()
@@ -651,7 +671,7 @@ class ReplayExperiment(object):
                     elif t >= change_times[-1]:
 
                         continue_trial = False
-
+                
                 # flip to draw everything
                 self.win.flip()
 
@@ -783,7 +803,7 @@ class ReplayExperiment(object):
 
         return shocks_given
 
-    def show_move(self, outcome, shock, picture, t, shock_time, show_moves=True, shock_delay=0.5, shocks_given=0):
+    def show_move(self, outcome, shock, picture, t, shock_time, show_moves=True, shock_delay=0.5):
 
         """
         Shows the image and (potentially) outcome associated with a state
@@ -799,27 +819,25 @@ class ReplayExperiment(object):
             shocks_given: Number of shocks given so far
 
         """
-
+        start = time.time()
         # set image
-        self.display_image.image = picture
+        if self.display_image.image != picture:
+            self.display_image.image = picture
 
         # set outcome text either as value or shock
         #self.outcome_image.image = outcome
-
         if t <= shock_time:
             self.outcome_text.text = outcome
             self.outcome_text.draw()
-        elif t > shock_time and shock == 1:
-            self.outcome_image.draw()
         elif t > shock_time + shock_delay and shock == 1:
             self.outcome_image.draw()
-            self.send_shocks(shocks_given, n_shocks=self.n_shocks)
-
+            self.shocks_given = self.send_shocks(self.shocks_given, n_shocks=self.n_shocks)
+        elif t > shock_time and shock == 1:
+            self.outcome_image.draw()
 
         if show_moves:
             for i in range(self.n_moves):
                 self.arrow_progress[i].draw()
-
         # draw everything
         self.display_image.draw()
 
