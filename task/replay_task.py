@@ -14,13 +14,14 @@ import ctypes
 class ParallelPort(object):
 
     def __init__(self, port=888, test=False):
-        if not test:
-            self._parallel = cytpes.WinDLL('')
+        self.test = test
+        if not self.test:
+            self._parallel = ctypes.WinDLL('')
         self.port = port
 
     def setData(self, data=0):
 
-        if not test:
+        if not self.test:
             self._parallel.outp(self.port, data)
         else:
             print "-"
@@ -54,6 +55,7 @@ class ReplayExperiment(object):
         dialogue.addField('Training', initial=True)
         dialogue.addField('Test', initial=True)
         dialogue.addField('Task', initial=True)
+        dialogue.addField('Parallel port', initial=True)
         dialogue.show()
 
         # check that values are OK and assign them to variables
@@ -65,6 +67,7 @@ class ReplayExperiment(object):
             self._run_training = dialogue.data[4]
             self._run_test = dialogue.data[5]
             self._run_main_task = dialogue.data[6]
+            self._parallel_port = dialogue.data[7]
         else:
             core.quit()
 
@@ -139,6 +142,10 @@ class ReplayExperiment(object):
         # Keys used for making moves
         self.response_keys = self.config['response keys']['response_keys']
 
+        # Set up parallel port
+        self.parallel_port = ParallelPort(port=888, test=self._parallel_port)
+        self.n_shocks = self.config['durations']['n_shocks']
+        self.shock_delay = self.config['durations']['shock_delay']
 
         # --------#
         # Stimuli #
@@ -505,6 +512,7 @@ class ReplayExperiment(object):
             moves_found = False
             moves_to_enter = []
             valid_moves = False
+            shocks_given = 0
 
             # Identifies and shows valid trajectories - used for testing
             if self.show_valid_moves:
@@ -551,7 +559,7 @@ class ReplayExperiment(object):
                         shock_only = shock_outcome[outcome_state]
                         self.show_move(outcome_only, shock_only, self.stimuli[outcome_state], t,
                                        outcome_only_change_times[1] + self.config['durations']['outcome_only_duration'] / 2.,
-                                       show_moves=False)
+                                       show_moves=False, shock_delay=self.shock_delay, shocks_given=shocks_given)
 
                     # End trial
                     elif outcome_only_change_times[2] <= t < outcome_only_change_times[3]:
@@ -765,8 +773,17 @@ class ReplayExperiment(object):
 
             return response, response_time
 
+    def send_shocks(self, shocks_given, n_shocks):
 
-    def show_move(self, outcome, shock, picture, t, shock_time, show_moves=True):
+        if shocks_given < n_shocks:
+            print "Shock {0}".format(shocks_given + 1)
+            self.parallel_port.setData(255)
+            self.parallel_port.setData(0)
+            shocks_given += 1
+
+        return shocks_given
+
+    def show_move(self, outcome, shock, picture, t, shock_time, show_moves=True, shock_delay=0.5, shocks_given=0):
 
         """
         Shows the image and (potentially) outcome associated with a state
@@ -778,7 +795,8 @@ class ReplayExperiment(object):
             t: Current time
             shock_time: Time at which the shock outcome should be displayed (this occurs after the reward outcome)
             show_moves: Whether or not to show the moves leading to a particular state underneath the image (boolean)
-
+            shock_delay: Delay until shocks are given after showing shock icon
+            shocks_given: Number of shocks given so far
 
         """
 
@@ -793,6 +811,10 @@ class ReplayExperiment(object):
             self.outcome_text.draw()
         elif t > shock_time and shock == 1:
             self.outcome_image.draw()
+        elif t > shock_time + shock_delay and shock == 1:
+            self.outcome_image.draw()
+            self.send_shocks(shocks_given, n_shocks=self.n_shocks)
+
 
         if show_moves:
             for i in range(self.n_moves):
