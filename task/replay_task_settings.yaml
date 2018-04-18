@@ -13,7 +13,9 @@ durations:
   outcome_only_text_duration: 2  #
   outcome_only_duration: 3  #
   rest_duration: 3  # Rest after outcome
+  shock_delay: 0.5  # Delay before shocks are given following the shock image
   n_moves: 3  # Number of moves subjects make
+  n_shocks: 5  # Number of shocks in each shock train
 directories:
   saved_data: 'Data/behavioural/pilot'
   stimuli_path: 'Stimuli'
