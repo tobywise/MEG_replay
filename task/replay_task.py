@@ -2,7 +2,6 @@
 
 from __future__ import division
 from psychopy import core, visual, event, gui, monitors, data
-from psychopy.iohub import launchHubServer
 import pandas as pd
 import os, csv
 import yaml
@@ -10,6 +9,22 @@ import numpy as np
 import random
 import networkx as nx
 import json
+import ctypes
+
+class ParallelPort(object):
+
+    def __init__(self, port=888, test=False):
+        if not test:
+            self._parallel = cytpes.WinDLL('')
+        self.port = port
+
+    def setData(self, data=0):
+
+        if not test:
+            self._parallel.outp(self.port, data)
+        else:
+            print "-"
+
 
 class ReplayExperiment(object):
 
@@ -363,6 +378,9 @@ class ReplayExperiment(object):
 
                 if not terminal:
                     key = event.waitKeys(keyList=moves_to_enter + ['escape', 'esc'])[0]
+                    if key in ['escape', 'esc']:
+                        self.save_json(i + 1, 0, 'Rest', False, None, None, None, self.subject_id, stopped='Space')
+                        core.quit()
                     start_state = self.moves_to_states([key], start_state)[0][1]
                     self.circle.pos = training_move_positions[key]
                     self.circle.draw()
