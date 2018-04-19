@@ -471,8 +471,6 @@ class ReplayExperiment(object):
         # Number of successes in test phase
         n_successes = 0
 
-        # Track which monitoring data we've saved
-        monitoring_saved = {'Planning': False, 'Moves': False, 'Rest': False, 'Outcome': False, 'Pause': False}
 
         for i in range(len(trial_info)):  # TRIAL LOOP - everything in here is repeated each trial
 
@@ -493,6 +491,9 @@ class ReplayExperiment(object):
             outcome_only_change_times = list(np.cumsum([0, self.config['durations']['outcome_only_text_duration'],
                                                         self.config['durations']['outcome_only_duration'],
                                                         self.config['durations']['rest_duration']]))
+
+            # Track which monitoring data we've saved
+            monitoring_saved = {'Planning': False, 'Moves': False, 'Rest': False, 'Outcome': False, 'Pause': False}
 
             # Starting state
             start_state = 0
@@ -518,7 +519,7 @@ class ReplayExperiment(object):
                 outcome += self.reward_info[[c for c in self.reward_info.columns if 'reward' in c]].iloc[i, :].tolist()
                 shock_outcome = [0] * (self.matrix.shape[0] - (self.shock_info.shape[1] - 1))
                 shock_outcome += self.shock_info[[c for c in self.shock_info.columns if 'shock' in c]].iloc[i, :].tolist()
-                shock_outcome = [1] * self.matrix.shape[0]
+                # shock_outcome = [1] * self.matrix.shape[0]
 
             # Default values for responses in case the subject makes no response
             rt = None
@@ -566,9 +567,9 @@ class ReplayExperiment(object):
                         text = "Outcome only"
                         self.instructions(text, max_wait=0)
 
-                        # if not monitoring_saved['Outcome']:
-                        #     monitoring_saved['Outcome'] = self.save_json(i+1, len(trial_info), 'Outcome only', None, None,
-                        #                                                  outcome, shock_outcome, self.subject_id)
+                        if not monitoring_saved['Outcome']:
+                            monitoring_saved['Outcome'] = self.save_json(i+1, len(trial_info), 'Outcome', True, [int(outcome_state)],
+                                                                         outcome, shock_outcome, self.subject_id)
 
                     # Show outcome
                     elif outcome_only_change_times[1] <= t < outcome_only_change_times[2]:
@@ -653,19 +654,29 @@ class ReplayExperiment(object):
                                     self.circle.pos = (self.arrow_positions[n], self.circle.pos[1])
                                     self.circle.draw()
                         
-                        # if not monitoring_saved['Moves']:
-                        #     monitoring_saved['Moves'] = self.save_json(i+1, len(trial_info), 'Moves', valid_moves,
-                        #                                                [i[1] for i in moves_states], outcome,
-                        #                                                shock_outcome, self.subject_id)
+                        if not monitoring_saved['Moves']:
+                            if moves_states:
+                                monitoring_saved['Moves'] = self.save_json(i+1, len(trial_info), 'Moves', valid_moves,
+                                                                        [l[1] for l in moves_states], outcome,
+                                                                        shock_outcome, self.subject_id)
+                            else:
+                                monitoring_saved['Moves'] = self.save_json(i+1, len(trial_info), 'Moves', valid_moves,
+                                                                        None, outcome,
+                                                                        shock_outcome, self.subject_id)
                          
                     # Rest period
                     elif change_times[4] <= t < change_times[5]:
                         self.fixation.draw()
 
-                        # if not monitoring_saved['Rest']:
-                        #     monitoring_saved['Rest'] = self.save_json(i+1, len(trial_info), 'Rest', valid_moves,
-                        #                                                [i[1] for i in moves_states], outcome,
-                        #                                                shock_outcome, self.subject_id)
+                        if not monitoring_saved['Rest']:
+                            if moves_states:
+                                monitoring_saved['Rest'] = self.save_json(i+1, len(trial_info), 'Rest', valid_moves,
+                                                                        [l[1] for l in moves_states], outcome,
+                                                                        shock_outcome, self.subject_id)
+                            else:
+                                monitoring_saved['Rest'] = self.save_json(i+1, len(trial_info), 'Rest', valid_moves,
+                                                                        None, outcome,
+                                                                        shock_outcome, self.subject_id)
 
                     # End trial
                     elif t >= change_times[-1]:
