@@ -457,6 +457,7 @@ class ReplayExperiment(object):
         # Show instructions for the actual task (not shown if in testing mode)
         if instructions is not None and not self.show_valid_moves:
             self.grand_instructions(instructions)
+            self.win.flip()
 
         end_state = None
 
@@ -471,6 +472,7 @@ class ReplayExperiment(object):
         # Number of successes in test phase
         n_successes = 0
 
+        core.wait(2)  # let things load before starting
 
         for i in range(len(trial_info)):  # TRIAL LOOP - everything in here is repeated each trial
 
@@ -710,6 +712,8 @@ class ReplayExperiment(object):
                         csvWriter([self.response_data[category] for category in self.data_keys])  # Write data
                     else:
                         # In the test phase, figure out whether they got to the correct state
+                        if moves_states is not False:
+                            print moves_states[-1][1], end_state
                         if moves_states is not False and moves_states[-1][1] == end_state:
                             n_successes += 1
                         else:
