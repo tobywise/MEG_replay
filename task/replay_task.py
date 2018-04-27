@@ -121,6 +121,10 @@ class ReplayExperiment(object):
         self.reward_info = self.trial_info[[c for c in self.trial_info.columns if 'reward' in c or c == 'trial_number']]
         self.shock_info = self.trial_info[[c for c in self.trial_info.columns if 'shock' in c or c == 'trial_number']]
 
+        # Get maximum available reward
+        self.max_reward = self.get_max_reward()
+        print "Maximum available reward = {0}".format(self.max_reward)
+
         # Things to save
         self.data_keys = ['Subject', 'trial_number', 'Move_1', 'Move_2', 'Move_3', 'State_1', 'State_2', 'State_3',
                           'RT_1', 'RT_2', 'RT_3', 'Reward', 'Shock', 'trial_type']
@@ -278,7 +282,8 @@ class ReplayExperiment(object):
 
         """
 
-        self.grand_instructions(['End of experiment'])
+        self.grand_instructions(['End of experiment\n'
+                                 'You collected {0}% of the maximum available rewards'.format(np.round(self.reward_value / self.max_reward))])
         self.win.flip()
         core.wait(10)
 
@@ -472,6 +477,9 @@ class ReplayExperiment(object):
         # Number of successes in test phase
         n_successes = 0
 
+        # Rewards collected
+        self.reward_value = 0
+
         core.wait(2)  # let things load before starting
 
         for i in range(len(trial_info)):  # TRIAL LOOP - everything in here is repeated each trial
@@ -655,6 +663,10 @@ class ReplayExperiment(object):
                                                    change_times[3] + n * self.move_duration + self.move_duration / 2.)
                                     self.circle.pos = (self.arrow_positions[n], self.circle.pos[1])
                                     self.circle.draw()
+
+                                    if n == self.n_moves - 1:
+                                        self.reward_value += outcome[state]  # add reward to total
+
                         
                         if not monitoring_saved['Moves']:
                             if moves_states:
@@ -1016,6 +1028,12 @@ class ReplayExperiment(object):
             return True
         except:
             pass
+
+    def get_max_reward(self):
+
+        reward_data = self.trial_info[[i for i in self.trial_info.columns if 'reward' in i]]
+
+        return reward_data.max(axis=1).sum()
 
 
 ## RUN THE EXPERIMENT
