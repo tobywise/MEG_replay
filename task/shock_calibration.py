@@ -4,7 +4,7 @@ from psychopy import core, visual, monitors, event
 class ParallelPort(object):
 
     def __init__(self, port=888):
-        self._parallel = ctypes.WinDLL('C:/Users/twise/Downloads/pyparallel-master/pyparallel-master/src/win32/simpleio.dll')
+        self._parallel = ctypes.WinDLL('simpleio.dll')
         self.port = port
 
     def setData(self, data=0):
