@@ -478,7 +478,7 @@ class ReplayExperiment(object):
         n_successes = 0
 
         # Rewards collected
-        self.reward_value = 0
+        self.reward_value = 0.0
 
         core.wait(2)  # let things load before starting
 
@@ -664,8 +664,8 @@ class ReplayExperiment(object):
                                     self.circle.pos = (self.arrow_positions[n], self.circle.pos[1])
                                     self.circle.draw()
 
-                                    if n == self.n_moves - 1:
-                                        self.reward_value += outcome[state]  # add reward to total
+                                    if n == self.n_moves - 1 and not test:
+                                        self.reward_value += float(outcome[state])  # add reward to total
 
                         
                         if not monitoring_saved['Moves']:
