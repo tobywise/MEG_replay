@@ -95,6 +95,7 @@ class ReplayExperiment(object):
 
         self.n_moves = self.config['durations']['n_moves']  # number of moves subjects are expected to make
         self.n_training_trials = self.config['number training trials']['n_training_trials']  # number of training trials
+        self.n_test_trials = self.config['number training trials']['n_test_trials']  # number of training trials
 
         # Transition matrix
         self.matrix, self.matrix_keys, self.matrix_asgraph = self.create_matrix()
@@ -255,16 +256,22 @@ class ReplayExperiment(object):
         # Run training
         if self._run_training:
             self.run_training()
+            core.wait(1)
 
         # Run test phase
         if self._run_test:
             test_passed = self.run_test()
-
+            core.wait(1)
+        print "AAA"
         # Rerun training and test if not passed, until they pass the test
         if self._run_training and self._run_test:
             while not test_passed:
                 self.run_training(show_instructions=False, show_intro=True)
+                core.wait(1)
                 test_passed = self.run_test(show_instructions=False, show_intro=True)
+                core.wait(1)
+                print "TEST DONE"
+                print test_passed
 
         # Run task
         if self._run_main_task:
@@ -310,11 +317,13 @@ class ReplayExperiment(object):
         """
 
         try:
-            self.__run_task(test=True, instructions=self.test_instructions, trial_info=self.trial_info_test,
-                            show_instructions=show_instructions, show_intro=show_intro)
+            result = self.__run_task(test=True, instructions=self.test_instructions, trial_info=self.trial_info_test,
+                                     show_instructions=show_instructions, show_intro=show_intro)
+            return result
         except:
             self.save_json(1, 1, 'Crash', False, None, None, None, self.subject_id, stopped='Crash')
             raise
+            
 
     def run_task(self):
 
@@ -352,7 +361,7 @@ class ReplayExperiment(object):
             self.grand_instructions(self.training_instructions)
 
         if show_intro:
-            self.grand_instructions("Starting training phase")
+            self.grand_instructions(["Starting training phase, press space to begin"])
 
         start_state = [0]
         random.shuffle(start_state)
@@ -474,8 +483,8 @@ class ReplayExperiment(object):
             self.grand_instructions(instructions)
             self.win.flip()
 
-        if show_intro:
-            self.grand_instructions("Starting test phase")
+        if show_intro and test:
+            self.grand_instructions(["Starting test phase, press space to begin"])
             self.win.flip()
 
         end_state = None
@@ -494,20 +503,21 @@ class ReplayExperiment(object):
         # Rewards collected
         self.reward_value = 0.0
 
-        core.wait(2)  # let things load before starting
+        # core.wait(2)  # let things load before starting
 
-        for i in range(len(trial_info)):  # TRIAL LOOP - everything in here is repeated each trial
+        if not test:
+            n_trials = len(trial_info)
+        else:
+            n_trials = self.n_test_trials
+        print "NUMBER OF TRIALS", n_trials
 
-            # In the test phase, break when subject gets enough trials correct
-            if n_successes == self.config['number training trials']['n_test_successes']:
-                return True
+        for i in range(n_trials):  # TRIAL LOOP - everything in here is repeated each trial
 
             print "Trial {0} / {1}".format(i + 1, len(trial_info))
 
             # self.io.clearEvents('all')  # clear keyboard events
 
             continue_trial = True  # this variables changes to False when we want to stop the trial
-            self.clock.reset()
 
             change_times = list(np.cumsum([0, self.start_duration, self.pre_move_duration, self.move_entering_duration,
                                            self.move_period_duration, self.config['durations']['rest_duration']]))
@@ -577,7 +587,9 @@ class ReplayExperiment(object):
             # Outcome only trials outcome state
             if trial_info['trial_type'][i] == 1:
                 outcome_state = trial_info['end_state'][i]
-            
+
+            self.clock.reset()
+
             while continue_trial:  # run the trial
                 start = time.time()
                 t = self.clock.getTime()  # get the time
@@ -746,6 +758,10 @@ class ReplayExperiment(object):
                             n_successes += 1
                         else:
                             n_successes = 0
+                        
+                        # In the test phase, break when subject gets enough trials correct
+                        if test and n_successes == self.config['number training trials']['n_test_successes']:
+                            return True
 
                         print n_successes
 
