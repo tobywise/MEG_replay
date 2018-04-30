@@ -246,18 +246,25 @@ class ReplayExperiment(object):
         Runs the experiment
         """
 
+        test_passed = False
+
         # Show main instructions
-        print "A"
         if self._run_instructions:
             self.show_starting_instructions()
-        print "B"
+
         # Run training
         if self._run_training:
             self.run_training()
-        print "C"
+
         # Run test phase
         if self._run_test:
-            self.run_test()
+            test_passed = self.run_test()
+
+        # Rerun training and test if not passed, until they pass the test
+        if self._run_training and self._run_test:
+            while not test_passed:
+                self.run_training(show_instructions=False, show_intro=True)
+                test_passed = self.run_test(show_instructions=False, show_intro=True)
 
         # Run task
         if self._run_main_task:
@@ -287,15 +294,15 @@ class ReplayExperiment(object):
         self.win.flip()
         core.wait(10)
 
-    def run_training(self):
+    def run_training(self, show_instructions=True, show_intro=False):
 
         try:
-            self.__run_training()
+            self.__run_training(show_instructions=show_instructions, show_intro=show_intro)
         except:
             self.save_json(1, 1, 'Crash', False, None, None, None, self.subject_id, stopped='Crash')
             raise
 
-    def run_test(self):
+    def run_test(self, show_instructions=True, show_intro=False):
 
         """
         Runs the test phase of the experiment, where subjects are shown a start state and have to navigate to an end state
@@ -303,7 +310,8 @@ class ReplayExperiment(object):
         """
 
         try:
-            self.__run_task(test=True, instructions=self.test_instructions, trial_info=self.trial_info_test)
+            self.__run_task(test=True, instructions=self.test_instructions, trial_info=self.trial_info_test,
+                            show_instructions=show_instructions, show_intro=show_intro)
         except:
             self.save_json(1, 1, 'Crash', False, None, None, None, self.subject_id, stopped='Crash')
             raise
@@ -322,13 +330,12 @@ class ReplayExperiment(object):
             raise
 
 
-    def __run_training(self):
+    def __run_training(self, show_instructions=True, show_intro=False):
 
         """
         Runs the training phase of the experiment
 
         """
-
 
         # Clock
         self.clock = core.Clock()
@@ -341,8 +348,11 @@ class ReplayExperiment(object):
 
         test_moves = np.repeat(['up', 'down', 'left', 'right'], 5)
 
-        if self.mode == 'Experiment':
+        if self.mode == 'Experiment' and show_instructions:
             self.grand_instructions(self.training_instructions)
+
+        if show_intro:
+            self.grand_instructions("Starting training phase")
 
         start_state = [0]
         random.shuffle(start_state)
@@ -433,7 +443,7 @@ class ReplayExperiment(object):
             core.wait(1)
 
 
-    def __run_task(self, test=False, instructions=None, trial_info=None):
+    def __run_task(self, test=False, instructions=None, trial_info=None, show_instructions=True, show_intro=False):
 
         """
         Method used to run the main task - used by both the task and test phases
@@ -460,8 +470,12 @@ class ReplayExperiment(object):
         test_moves = np.repeat(['up', 'down', 'left', 'right'], 5)
 
         # Show instructions for the actual task (not shown if in testing mode)
-        if instructions is not None and not self.show_valid_moves:
+        if instructions is not None and not self.show_valid_moves and show_instructions:
             self.grand_instructions(instructions)
+            self.win.flip()
+
+        if show_intro:
+            self.grand_instructions("Starting test phase")
             self.win.flip()
 
         end_state = None
@@ -486,7 +500,7 @@ class ReplayExperiment(object):
 
             # In the test phase, break when subject gets enough trials correct
             if n_successes == self.config['number training trials']['n_test_successes']:
-                break
+                return True
 
             print "Trial {0} / {1}".format(i + 1, len(trial_info))
 
@@ -555,7 +569,7 @@ class ReplayExperiment(object):
                 moves_to_enter = ''
 
             # Key entering stage warning text
-            key_text = 'Enter key movements\n{0}'.format(moves_to_enter)
+            key_text = 'Get ready to enter key movements\n{0}'.format(moves_to_enter)
 
             # Make sure the start state image is reset to the center of the screen
             self.display_image.setPos((0, 0))
@@ -705,6 +719,7 @@ class ReplayExperiment(object):
                     # Responses
                     self.response_data['trial_number'] = i
                     self.response_data['Subject'] = self.subject_id
+
                     if trial_info['trial_type'][i] == 1:
                         for n in range(0, 3):
                             self.response_data['Move_{0}'.format(n + 1)] = np.nan
@@ -720,6 +735,7 @@ class ReplayExperiment(object):
                         self.response_data['Reward'] = outcome[state]
                         self.response_data['Shock'] = shock_outcome[state]
                     self.response_data['trial_type'] = trial_info['trial_type'][i]
+
                     if not test:
                         csvWriter([self.response_data[category] for category in self.data_keys])  # Write data
                     else:
@@ -747,6 +763,8 @@ class ReplayExperiment(object):
                     self.save_json(i + 1, len(trial_info), 'Escape', valid_moves, None, None, None, self.subject_id,
                                    stopped='Escape')
                     core.quit()
+
+        return False
 
 
     def load_instructions(self, text_file):
