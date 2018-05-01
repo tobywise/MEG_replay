@@ -143,9 +143,11 @@ class ReplayExperiment(object):
         monitor.setSizePix((1024, 768))
         self.win = visual.Window(monitor=monitor, size=(1024, 768), fullscr=True, allowGUI=False, color='gray', units='deg',
                             colorSpace='hex')
-        self.win.mouseVisible = False  # make the mouse invisible
+        # self.win.mouseVisible = False  # make the mouse invisible
 
-        self.win.recordFrameIntervals = True
+        # self.win.recordFrameIntervals = True
+
+        self.mouse = event.Mouse()
 
         # By default, the threshold is set to 120% of the estimated refresh
         # duration, but arbitrary values can be set.
@@ -214,6 +216,19 @@ class ReplayExperiment(object):
 
         random.shuffle(self.stimuli)  # make sure stimuli are randomly assigned to states
 
+        # State selection images
+        self.state_selection_images = []  # list of tuples, (image id, imagestim)
+        # Create a 3x3 grid of images
+        print len(self.stimuli)
+        for i in range(len(self.stimuli[1:])):
+            pos = (((i % 5) - 2) * self.config['image sizes']['state_selection_spacing'],
+                   (np.floor(i / 5) - 0.5) * self.config['image sizes']['state_selection_spacing'])
+            self.state_selection_images.append((i, visual.ImageStim(win=self.win,
+                                                           size=self.config['image sizes']['size_selection_image'],
+                                                           pos=pos)))
+        print self.state_selection_images
+        self.state_selection_dict = None
+
         # Create some ImageStim instances
 
         # Image to display shock outcomes
@@ -240,6 +255,7 @@ class ReplayExperiment(object):
         self.training_instructions = self.load_instructions(self.config['directories']['training_instructions'])
         self.task_instructions = self.load_instructions(self.config['directories']['task_instructions'])
         self.test_instructions = self.load_instructions(self.config['directories']['test_instructions'])
+
 
     def run(self):
 
@@ -323,7 +339,6 @@ class ReplayExperiment(object):
         except:
             self.save_json(1, 1, 'Crash', False, None, None, None, self.subject_id, stopped='Crash')
             raise
-            
 
     def run_task(self):
 
@@ -337,7 +352,6 @@ class ReplayExperiment(object):
         except:
             self.save_json(1, 1, 'Crash', False, None, None, None, self.subject_id, stopped='Crash')
             raise
-
 
     def __run_training(self, show_instructions=True, show_intro=False):
 
@@ -392,65 +406,62 @@ class ReplayExperiment(object):
                 else:
                     terminal = False
 
-                moves_found = False
-                moves_to_enter = []
-
                 if not terminal:
-                    while not moves_found:
-                        random.shuffle(test_moves)
-                        moves_to_enter = self.test_moves(start_state)
-                        # print moves_to_enter
-                        if moves_to_enter is not False:
-                            moves_found = True
+                    valid_states = self.test_moves(start_state)
 
-
-                training_arrow_positions, training_arrows = self.create_arrows(len(moves_to_enter))
-
-                training_move_positions = {}
-
-                for n, i in enumerate(moves_to_enter):
-                    training_arrows[n].image = self.arrow_images[i]
-                    training_arrows[n].draw()
-                    training_move_positions[i] = training_arrows[n].pos
 
                 self.display_image.setImage(self.stimuli[start_state])
                 self.display_image.draw()
                 #self.arrow_display.image = self.arrow_images[key]
                 # self.arrow_display.setImage(training_arrows)
 
-
                 ## THIS IS WHERE THEY MAKE THE MOVE
                 self.win.flip()
+                core.wait(2)
+
+                if trial == 0:
+                    self.setup_state_selection_grid(random_positions=True, valid=valid_states)
+                else:
+                    self.setup_state_selection_grid(random_positions=False, valid=valid_states)
+                core.wait(0.5)
+
+                moves = []
+                self.win.mouseVisible = True
 
                 if not terminal:
-                    key = event.waitKeys(keyList=moves_to_enter + ['escape', 'esc'])[0]
-                    if key in ['escape', 'esc']:
-                        self.save_json(i + 1, 0, 'Rest', False, None, None, None, self.subject_id, stopped='Space')
-                        core.quit()
-                    start_state = self.moves_to_states([key], start_state)[0][1]
-                    self.circle.pos = training_move_positions[key]
-                    self.circle.draw()
-                    for n, i in enumerate(moves_to_enter):
-                        training_arrows[n].draw()
 
+                    while len(moves) < 1:
+                        self.draw_state_selection_grid()
+                        self.win.flip()
+                        move = self.detect_state_selection()
+                        if move is not None and move not in moves:
+                            moves.append(move)
+
+                        #
+                        # if key and key[0] in ['escape', 'esc']:
+                        #     self.save_json(trial + 1, 0, 'Rest', False, None, None, None, self.subject_id, stopped='Escape')
+                        #     core.quit()
+
+                    start_state = moves[0]
+                    print "START", start_state
                     # if not monitoring_saved['Training']:
                     #     monitoring_saved['Training'] = self.save_json(i + 1, self.n_training_trials, 'Outcome only',
                     #                                                   True, start_state, None, None, self.subject_id)
+
                 else:
                     start_state = 0
 
-                self.display_image.draw()
-
+                # self.display_image.draw()
                 self.win.flip()
                 core.wait(1)
 
                 # quit if subject pressed scape
-                if key in ['escape', 'esc']:
-                    self.save_json(i + 1, 0, 'Rest', False, None, None, None, self.subject_id, stopped='Space')
-                    core.quit()
+                # key = event.getKeys(keyList=moves_to_enter + ['escape', 'esc'])
+                # if key in ['escape', 'esc']:
+                #     self.save_json(trial + 1, 0, 'Rest', False, None, None, None, self.subject_id, stopped='Space')
+                #     core.quit()
 
             core.wait(1)
-
 
     def __run_task(self, test=False, instructions=None, trial_info=None, show_instructions=True, show_intro=False):
 
@@ -588,6 +599,10 @@ class ReplayExperiment(object):
             if trial_info['trial_type'][i] == 1:
                 outcome_state = trial_info['end_state'][i]
 
+            # Setup selection grid
+            self.setup_state_selection_grid(random_positions=True)
+            moves = []
+
             self.clock.reset()
 
             while continue_trial:  # run the trial
@@ -651,16 +666,11 @@ class ReplayExperiment(object):
                         if len(raw_keys):
                             key, rt = raw_keys[0]
 
-                        if key is not None and len(trial_moves) < self.n_moves:
-                            self.arrow_display.image = self.arrow_images[key]
-
-                            trial_moves.append(key)
-                            move_rts.append(rt)
-                            key = None
-
-                        if len(trial_moves) > 0:
-                            if t < rt + 0.2:
-                                self.arrow_display.draw()
+                        self.draw_state_selection_grid()
+                        self.win.flip()
+                        move = self.detect_state_selection()
+                        if move is not None and move not in moves and len(moves) < 4:
+                            moves.append(move)
 
                     # Show moves
                     
@@ -676,7 +686,7 @@ class ReplayExperiment(object):
                         if moves_states is False:
                             self.main_text.text = "Wrong moves entered"
                             self.main_text.draw()
-                        elif len(trial_moves) < self.n_moves:
+                        elif len(moves) < self.n_moves:
                             moves_states = False
                             self.main_text.text = "Too few moves entered"
                             self.main_text.draw()
@@ -781,7 +791,6 @@ class ReplayExperiment(object):
                     core.quit()
 
         return False
-
 
     def load_instructions(self, text_file):
 
@@ -974,7 +983,6 @@ class ReplayExperiment(object):
 
         return matrix, matrix_keys, G
 
-
     def moves_to_states(self, trial_moves, start):
 
         """
@@ -1023,21 +1031,13 @@ class ReplayExperiment(object):
 
         """
 
-        moves_states = []
-
         if end is not None:
-            path = nx.shortest_path(self.matrix_asgraph, start, end)
-
-            for n, i in enumerate(path[:-1]):
-                moves_states.append(self.matrix_keys[i, path[n + 1]])
+            states = nx.shortest_path(self.matrix_asgraph, start, end)
 
         else:
-            neighbours = self.matrix_asgraph.neighbors(start)
-            for i in neighbours:
-                moves_states.append(self.matrix_keys[start, i])
+            states = [i for i in self.matrix_asgraph.neighbors(start)]
 
-        return moves_states
-
+        return states
 
     def show_start_end_move(self):
 
@@ -1068,6 +1068,50 @@ class ReplayExperiment(object):
         reward_data = self.trial_info[[i for i in self.trial_info.columns if 'reward' in i]]
 
         return reward_data.max(axis=1).sum()
+
+    def setup_state_selection_grid(self, random_positions=True, valid=None, selected=()):
+
+        """
+        Assign state images to the imagestim instances that make up the 3 x 3 state selection grid
+
+        """
+
+        # Shuffle imagestim/number order so images are randomly assigned to positions on the grid
+
+        print "VV"
+        print valid
+
+        if random_positions:
+            random.shuffle(self.state_selection_images)
+
+        # Create a dictionary that looks like {grid id: state id}
+        self.state_selection_dict = {}
+        # Make invalid images smaller
+        if valid is not None:
+            invalid_size = [i / 2. for i in self.config['image sizes']['size_selection_image']]
+
+        for n, i in enumerate(self.stimuli[1:]):
+            self.state_selection_images[n][1].image = i
+            if valid is not None and n + 1 not in valid:
+                self.state_selection_images[n][1].size = invalid_size
+            else:
+                self.state_selection_images[n][1].size = self.config['image sizes']['size_selection_image']
+            self.state_selection_dict[self.state_selection_images[n][0]] = n + 1
+
+        print self.state_selection_dict
+
+    def draw_state_selection_grid(self):
+
+        for i in self.state_selection_images:
+            i[1].draw()
+
+    def detect_state_selection(self):
+
+        for i in self.state_selection_images:
+            if self.mouse.isPressedIn(i[1]):
+                return self.state_selection_dict[i[0]]  # get the state associated with this image
+
+
 
 
 ## RUN THE EXPERIMENT
