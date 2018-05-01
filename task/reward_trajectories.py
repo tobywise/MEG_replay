@@ -13,10 +13,10 @@ matplotlib.rcParams['font.family'] = prop.get_name()
 
 n_trials = 100  # number of trials
 n_blocks = 4  # number of blocks (reversals)
-scale = 0.03  # mean step size of random walk
+scale = 0.04  # mean step size of random walk
 sd = 0.05  # SD of step size
 diff = 0.04  # difference between random walks in the same tree branch
-n_outcome_trials = 25
+n_outcome_trials = 20
 
 
 # CALCULATE MEAN INNOVATIONS FOR RANDOM WALK
