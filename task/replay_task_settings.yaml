@@ -2,9 +2,9 @@
 arrow positions:
   arrow_gap: 3  # Gap between arrow stimuli
 number training trials:
-  n_training_trials: 2  # Number of trials in the training session
-  n_test_trials: 2  # Number of trials in the test session
-  n_test_successes: 2  # Number of consecutive successes required to pass the test phase
+  n_training_trials: 20  # Number of trials in the training session
+  n_test_trials: 20  # Number of trials in the test session
+  n_test_successes: 8  # Number of consecutive successes required to pass the test phase
 durations:
   start_duration: 5  #
   pre_move_duration: 1  # 'Get ready to enter moves' duration
@@ -36,6 +36,8 @@ image sizes:
   size_outcome_image: !!python/tuple [2, 3]  #
   size_display_image: !!python/tuple [11, 11]  #
   size_arrow_display: !!python/tuple [2, 3]  # Size of the arrow stimuli
+  state_selection_spacing: 6
+  size_selection_image: !!python/tuple [6, 6]
 fonts:
   font_path: 'fonts/OpenSans-Regular.ttf'
   font_name: 'Open Sans'
