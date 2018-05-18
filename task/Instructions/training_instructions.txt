@@ -1,4 +1,4 @@
-You will first be guided through a training.
+You will first be guided through a training phase.
 
 *In the training, you will be able to move through the pictures but you will not see or receive any rewards. With each picture shown, you will also be shown all the possible moves you can make. Your job is to move through the pictures using these displayed possible moves.
 

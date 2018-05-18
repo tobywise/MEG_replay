@@ -1,0 +1,2 @@
+Subject,trial_number,Move_1,Move_2,Move_3,State_1,State_2,State_3,RT_1,RT_2,RT_3,Reward,Shock,trial_type
+123,0,down,up,down,1,4,8,8.701940486914282,9.12250216998848,9.39204135581349,0.0,0.0,0.0

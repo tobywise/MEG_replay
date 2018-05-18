@@ -37,8 +37,6 @@
             $.getJSON("replay_task_output_json.txt", function (json) {
                 var svg_elements = document.getElementById("svg4821").getElementById("layer1");
 
-                console.log(json);
-                console.log("AA");
                 $('#header2').text("Trial " + json.Trial + " / " + json.Total_trials + ' : ' + json.Phase);
                 $('#subject').text("Subject  " + json.Subject);
 
@@ -49,13 +47,25 @@
 
                     if (valid == true) {
 
-                        for (var i = 0; i < moves.length; i += 1) {
-                            svg_elements.querySelector("#circle_" + moves[i]).style.stroke = '#69b3ff';
+                        svg_elements.querySelector("#circle_0").style.stroke = '#69b3ff';
+
+                        for (var i = 0; i < 11; i += 1) {
+                            console.log(i);
+                            console.log(moves);
+                            if (moves.includes(i)) {
+                                svg_elements.querySelector("#circle_" + i).style.stroke = '#69b3ff';
+                            }
+                            else {
+                                svg_elements.querySelector("#circle_" + i).style.stroke = '#b4b4b4';
+                            }
                         }
 
                     }
 
                     else {
+                        for (var i = 0; i < 11; i++) {
+                            svg_elements.querySelector("#circle_" + i).style.stroke = '#b4b4b4';
+                        }
                         svg_elements.querySelector("#circle_0").style.stroke = 'red';
                     }
                 }
@@ -69,11 +79,14 @@
                 var rewards = json.Reward;
                 var shock = json.Shock;
 
-                for (var i=0; i<rewards.length; i++) {
-                    svg_elements.querySelector("#outcome_" + i).textContent = rewards[i];
-                    svg_elements.querySelector("#outcome_" + i).style.fontSize = 30;
+
+                for (var i=7; i<rewards.length; i++) {
+                    console.log(i-7);
+                    console.log("#outcome_" + (i-7));
+                    svg_elements.querySelector("#outcome_" + (i-7)).textContent = rewards[i];
+                    svg_elements.querySelector("#outcome_" + (i-7)).style.fontSize = 30;
                     if (shock[i] == 1) {
-                        svg_elements.querySelector("#outcome_" + i).style.fill = '#fe9100';
+                        svg_elements.querySelector("#outcome_" + (i-7)).style.fill = '#fe9100';
                     }
                 }
 
@@ -93,7 +106,7 @@
 
             });
         }
-        setInterval(load_json, 5000);
+        setInterval(load_json, 1000);
         load_json();
     });
 
