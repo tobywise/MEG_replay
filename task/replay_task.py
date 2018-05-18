@@ -11,6 +11,9 @@ import networkx as nx
 import json
 import ctypes
 import time
+import copy
+
+# TODO training phase state selection
 
 class ParallelPort(object):
 
@@ -101,6 +104,7 @@ class ReplayExperiment(object):
 
         # Transition matrix
         self.matrix, self.matrix_keys, self.matrix_asgraph = self.create_matrix()
+        print self.matrix
 
         # Number of trials in training phase
         self.n_training_trials = self.config['number training trials']['n_training_trials']
@@ -153,13 +157,7 @@ class ReplayExperiment(object):
 
         self.mouse = event.Mouse()
 
-        # By default, the threshold is set to 120% of the estimated refresh
-        # duration, but arbitrary values can be set.
-        #
-        # I've got 85Hz monitor and want to allow 4 ms tolerance; any refresh that
-        # takes longer than the specified period will be considered a "dropped"
-        # frame and increase the count of win.nDroppedFrames.
-        self.win.refreshThreshold = 1/60. + 0.004
+        self.win.refreshThreshold = 1/60. + 0.004  # for checking for dropped frames
 
         # Set the log module to report warnings to the standard output window
         # (default is errors only).
@@ -167,6 +165,7 @@ class ReplayExperiment(object):
 
         # Keys used for making moves
         self.response_keys = self.config['response keys']['response_keys']
+        self.response_phases = self.config['response keys']['response_phases']  # levels of the tree
 
         # Set up parallel port
         self.parallel_port = ParallelPort(port=888, test=self._parallel_port)
@@ -520,7 +519,7 @@ class ReplayExperiment(object):
 
             # self.io.clearEvents('all')  # clear keyboard events
 
-            continue_trial = True  # this variables changes to False when we want to stop the trial
+            continue_trial = True  # this variable changes to False when we want to stop the trial
 
             change_times = list(np.cumsum([0, self.start_duration, self.pre_move_duration, self.move_entering_duration,
                                            self.move_period_duration, self.config['durations']['rest_duration']]))
@@ -566,6 +565,12 @@ class ReplayExperiment(object):
             moves_validated = False
             self.shocks_given = 0
 
+            # Setup selection grid
+            self.setup_state_selection_grid(random_positions=True, test=self.testing_mode)
+            moves = []
+            moves_states = []
+            pos_selected = []  # image positions that have been selected - these are faded out on the grid
+
             # Identifies and shows valid trajectories - used for testing
             if self.testing_mode:
                 if not test:
@@ -588,11 +593,6 @@ class ReplayExperiment(object):
             if trial_info['trial_type'][i] == 1:
                 outcome_state = trial_info['end_state'][i]
 
-            # Setup selection grid
-            self.setup_state_selection_grid(random_positions=True, test=self.testing_mode)
-            moves = []
-            moves_states = []
-            pos_selected = []  # image positions that have been selected - these are faded out on the grid
 
             self.clock.reset()
 
@@ -650,17 +650,29 @@ class ReplayExperiment(object):
                     # Move entering period
                     elif change_times[2] <= t < change_times[3]:
 
-                        raw_keys = event.getKeys(keyList=['left', 'right', 'up', 'down'], timeStamped=self.clock)
-
-                        if len(raw_keys):
-                            key, rt = raw_keys[0]
+                        # Draw state selection grid
                         self.draw_state_selection_grid(selected=pos_selected, test=self.testing_mode)
-                        # self.win.flip()
-                        move, pos = self.detect_state_selection()
-                        if move is not None and move not in moves and len(moves) < 3:
-                            moves.append(move)
-                            pos_selected.append(pos[0])
-                            move_rts.append(t - change_times[2])
+
+                        # Watch for key presses
+                        raw_keys = event.getKeys(keyList=self.response_keys, timeStamped=self.clock)
+
+                        # If a key is pressed, work out which state and position was selected
+                        if len(raw_keys) and len(moves) < 3:
+                            print "AA"
+                            key, rt = raw_keys[0]
+
+                            # get selected state
+                            phase = len(moves)
+                            print phase, moves
+                            print self.phase_key_state_mapping
+                            selected_state = self.phase_key_state_mapping[phase][key]
+                            moves.append(selected_state)
+                            move_rts.append(rt)
+                            print "B", moves
+
+                            # get selected state position on grid
+                            pos = self.state_selection_dict[selected_state]
+                            pos_selected.append(pos)
 
 
                     # Show moves
@@ -773,7 +785,7 @@ class ReplayExperiment(object):
                     event.waitKeys(['space', ' '])
 
                 # quit if subject pressed scape
-                if event.getKeys(["escape"]):
+                if event.getKeys(["escape", "esc"]):
                     if self.monitoring:
                         self.save_json(i + 1, len(trial_info), 'Escape', valid_moves, None, None, None, self.subject_id,
                                        stopped='Escape')
@@ -977,7 +989,7 @@ class ReplayExperiment(object):
 
         return moves_states
 
-    def test_moves(self, start, end=None):
+    def test_moves(self, start, end=None, return_keys=True):
 
         """
         For a given start and end state, works out a series of allowable moves. If end is None, returns all possible moves
@@ -997,6 +1009,13 @@ class ReplayExperiment(object):
 
         else:
             states = [i for i in self.matrix_asgraph.neighbors(start)]
+
+        if return_keys:
+            print "KEYS"
+            print states[1:]
+            print self.state_selection_keys
+            states = [self.state_selection_keys[i] for i in states[1:]]
+            print states
 
         return states
 
@@ -1042,8 +1061,15 @@ class ReplayExperiment(object):
         if random_positions:
             random.shuffle(self.state_selection_images)
 
-        # Create a dictionary that looks like {grid id: state id}
+        # Create a dictionary that looks like {state id: grid id}
         self.state_selection_dict = {}
+
+        # Assign keys for each state
+        self.state_selection_keys, self.phase_key_state_mapping = self.assign_response_keys()
+        print "GRID"
+        print self.state_selection_keys
+        print self.phase_key_state_mapping
+
         # Make invalid images smaller
         if valid is not None:
             invalid_size = [i / 2. for i in self.config['image sizes']['size_selection_image']]
@@ -1051,14 +1077,12 @@ class ReplayExperiment(object):
         for n, i in enumerate(self.stimuli[1:]):
             self.state_selection_images[n][1].image = i
             if test:
-                self.state_selection_images[n][2].text = n + 1
+                self.state_selection_images[n][2].text = self.state_selection_keys[n + 1]
             if valid is not None and n + 1 not in valid:
                 self.state_selection_images[n][1].size = invalid_size
             else:
                 self.state_selection_images[n][1].size = self.config['image sizes']['size_selection_image']
-            self.state_selection_dict[self.state_selection_images[n][0]] = n + 1
-
-        print self.state_selection_dict
+            self.state_selection_dict[n + 1] = self.state_selection_images[n][0]
 
     def draw_state_selection_grid(self, selected=(), test=False):
 
@@ -1071,13 +1095,6 @@ class ReplayExperiment(object):
             if test:
                 j.draw()
 
-    def detect_state_selection(self):
-
-        for i in self.state_selection_images:
-            if self.mouse.isPressedIn(i[1]):
-                return self.state_selection_dict[i[0]], i  # get the state associated with this image, return it along with the position
-
-        return (None, None)
 
     def validate_moves(self, moves):
 
@@ -1087,6 +1104,40 @@ class ReplayExperiment(object):
                 return False
 
         return True
+
+    def assign_response_keys(self):
+
+        # Assign keys to each state option - must have distinct keys for each option at each level
+
+        shuffled_response_keys = copy.copy(self.response_keys)
+
+        state_keys = {}  # maps states to keys, used for labelling
+        phase_key_state_mapping = {}  # maps phases (levels of the tree) and keys to states
+
+        prev_phase = -1
+        prev_n = 0
+
+        for i in range(self.matrix.shape[0]):
+
+            next_states = np.where(self.matrix[i, :])[0]
+
+            for n, j in enumerate(next_states):
+
+                phase = self.response_phases[j - 1]
+                if phase != prev_phase:
+                    random.shuffle(shuffled_response_keys)
+                    prev_n = 0
+
+                state_keys[j] = shuffled_response_keys[n + prev_n]
+
+                if not phase in phase_key_state_mapping:
+                    phase_key_state_mapping[phase] = {}
+                phase_key_state_mapping[phase][shuffled_response_keys[n + prev_n]] = j
+
+            prev_phase = phase
+            prev_n += n + 1
+
+        return state_keys, phase_key_state_mapping
 
 
 

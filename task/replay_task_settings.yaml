@@ -30,7 +30,8 @@ directories:
 filenames:
   save_prefix: 'replay_task_behavioural'
 response keys:
-  response_keys: ['down', 'left', 'right', 'up']
+  response_keys: ['1', '2', '3', '4']
+  response_phases: [0, 0, 1, 1, 1, 1, 2, 2, 2, 2]
 image sizes:
   size_image_size: !!python/tuple [6, 6]  # Size of the state image stimuli
   size_outcome_image: !!python/tuple [2, 3]  #
