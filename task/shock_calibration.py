@@ -15,8 +15,11 @@ port = ParallelPort(888)
 # psychopy visual stuff
 monitor = monitors.Monitor('test2', width=40.92, distance=74)
 monitor.setSizePix((1024, 768))
+
+# TODO MEG SCREEN 0
+
 win = visual.Window(monitor=monitor, size=(1024, 768), fullscr=True, allowGUI=False, color='#606060', units='deg',
-                    colorSpace='hex', screen=1)
+                    colorSpace='hex', screen=0)
 vas = visual.RatingScale(win, low=1, high=10, scale='How painful was the shock?', acceptText='Press space to continue', acceptKeys=['space'], showAccept=False)
 main_text = visual.TextStim(win=win, height=0.8, color='white', alignVert='center', alignHoriz='center', wrapWidth=30)
 main_text.fontFiles = ["fonts/OpenSans-Regular.ttf"]  # Arial is horrible
@@ -39,7 +42,7 @@ start = True
 while continue_calibration:
 
     if start:
-        event.waitKeys(keyList=['space', ' '])
+        event.waitKeys(keyList=['1', ' '])
         start = False
 
     continue_shock = True
@@ -52,26 +55,13 @@ while continue_calibration:
             give_shock()
             core.wait(1)
             shocked = True
-        while vas.noResponse:
-            if len(event.getKeys(['esc', 'escape', 'q'])):
-                core.quit()
-            vas.draw()
-            win.flip()
 
-        if vas.getRating() == 10 and not reset:
-            main_text.setText("Shock intensity rated 10/10")
-            main_text.draw()
-            win.flip()
-            if len(event.getKeys()):
-                reset = True
-                continue_shock = False
-                shocked = False
-                vas.reset()
-                event.clearEvents()
-        else:
-            continue_shock = False
-            shocked = False
-            vas.reset()
+        main_text.setText("Rating")
+        main_text.draw()
+        win.flip()
+        event.waitKeys(keyList=['1', ' '])
+        continue_shock = False
+        shocked = False
 
         if len(event.getKeys(['esc', 'escape', 'q'])):
             core.quit()

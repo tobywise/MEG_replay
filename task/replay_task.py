@@ -15,6 +15,7 @@ import copy
 
 
 # TODO training phase state selection
+# TODO gap between move selection and state display
 
 class ParallelPort(object):
 
@@ -171,7 +172,6 @@ class ReplayExperiment(object):
 
         # Set up parallel port
         self.parallel_port = ParallelPort(port=888, test=self._parallel_port)
-        self.parallel_port2 = ParallelPort(port=000, test=self._parallel_port)
         self.n_shocks = self.config['durations']['n_shocks']
         self.shock_delay = self.config['durations']['shock_delay']
 
@@ -251,6 +251,9 @@ class ReplayExperiment(object):
         self.training_instructions = self.load_instructions(self.config['directories']['training_instructions'])
         self.task_instructions = self.load_instructions(self.config['directories']['task_instructions'])
         self.test_instructions = self.load_instructions(self.config['directories']['test_instructions'])
+
+        # Photodiode things
+        self.photodiode_square = visual.Rect(self.win, 1, 1, fillColor='black', pos=(-15.5, -9.5))
 
     def run(self):
 
@@ -470,6 +473,8 @@ class ReplayExperiment(object):
 
         """
 
+        self.send_trigger(self.parallel_port, 0, False)
+
         # Clock
         self.clock = core.Clock()
 
@@ -595,10 +600,21 @@ class ReplayExperiment(object):
                 outcome_state = trial_info['end_state'][i]
 
             # Trigger dict - lets us know whether we've sent triggers yet
-            trigger_dict = {'Planning': False, 'Move_entering': False, 'State_0': False, 'State_1': False,
+            self.trigger_dict = {'Planning': False, 'Move_entering': False, 'State_0': False, 'State_1': False,
                             'State_2': False,
                             'State_3': False, 'Shock': False, 'Rest': False, 'Outcome_only_warning': False,
                             'Outcome_only_outcome': False}
+
+            if i % 25 == 0:
+                if i == 0:
+                    self.grand_instructions(["Welcome to the experiment"])
+                else:
+                    self.grand_instructions(["BREAK"])
+                self.win.flip()
+                event.waitKeys("space")
+                self.grand_instructions(["We are about to start a new block, please keep as still as possible for the duration of the block"])
+                self.win.flip()
+                event.waitKeys("space")
 
             self.clock.reset()
 
@@ -615,12 +631,19 @@ class ReplayExperiment(object):
                         text = "Outcome only"
                         self.instructions(text, max_wait=0)
 
-                        self.send_trigger(self.parallel_port2, 0, trigger_dict['Outcome_only_warning'])
+                        self.send_trigger(self.parallel_port, 2, self.trigger_dict['Outcome_only_warning'])
+                        self.trigger_dict['Outcome_only_warning'] = True
 
                         if not monitoring_saved['Outcome'] and self.monitoring:
                             monitoring_saved['Outcome'] = self.save_json(i + 1, len(trial_info), 'Outcome', True,
                                                                          [int(outcome_state)],
                                                                          outcome, shock_outcome, self.subject_id)
+
+                        if t < 0.5:
+                            self.photodiode_square.fillColor = 'white'
+                            self.photodiode_square.draw()
+                        else:
+                            self.photodiode_square.fillColor = 'black'
 
                     # Show outcome
                     elif outcome_only_change_times[1] <= t < outcome_only_change_times[2]:
@@ -631,7 +654,14 @@ class ReplayExperiment(object):
                                            'outcome_only_duration'] / 2.,
                                        show_moves=False, shock_delay=self.shock_delay)
 
-                        self.send_trigger(self.parallel_port2, 0, trigger_dict['Outcome_only_outcome'])
+                        self.send_trigger(self.parallel_port, 4, self.trigger_dict['Outcome_only_outcome'])
+                        self.trigger_dict['Outcome_only_outcome'] = True
+
+                        if change_times[1] < t < change_times[1] + 0.5:
+                            self.photodiode_square.fillColor = 'white'
+                            self.photodiode_square.draw()
+                        else:
+                            self.photodiode_square.fillColor = 'black'
 
                     # End trial
                     elif outcome_only_change_times[2] <= t < outcome_only_change_times[3]:
@@ -653,7 +683,14 @@ class ReplayExperiment(object):
                                                                           None,
                                                                           outcome, shock_outcome, self.subject_id)
 
-                        self.send_trigger(self.parallel_port2, 0, trigger_dict['Planning'])
+                        self.send_trigger(self.parallel_port, 6, self.trigger_dict['Planning'])
+                        self.trigger_dict['Planning'] = True
+
+                        if change_times[0] < t < change_times[0] + 0.5:
+                            self.photodiode_square.fillColor = 'white'
+                            self.photodiode_square.draw()
+                        else:
+                            self.photodiode_square.fillColor = 'black'
 
                     # Move entering warning
                     elif change_times[1] <= t < change_times[2]:
@@ -662,7 +699,14 @@ class ReplayExperiment(object):
                         event.clearEvents()
                         self.display_image.setPos((0, 0))
 
-                        self.send_trigger(self.parallel_port2, 0, trigger_dict['Move_entering'])
+                        self.send_trigger(self.parallel_port, 10, self.trigger_dict['Move_entering'])
+                        self.trigger_dict['Move_entering'] = True
+
+                        if change_times[1] < t < change_times[1] + 0.5:
+                            self.photodiode_square.fillColor = 'white'
+                            self.photodiode_square.draw()
+                        else:
+                            self.photodiode_square.fillColor = 'black'
 
                     # Move entering period
                     elif change_times[2] <= t < change_times[3]:
@@ -671,25 +715,38 @@ class ReplayExperiment(object):
                         self.draw_state_selection_grid(selected=pos_selected, test=self.testing_mode)
 
                         # Watch for key presses
-                        raw_keys = event.getKeys(keyList=self.response_keys, timeStamped=self.clock)
+                        # raw_keys = event.getKeys(keyList=self.response_keys, timeStamped=self.clock)
+                        raw_keys = event.getKeys(timeStamped=self.clock)
 
                         # If a key is pressed, work out which state and position was selected
                         if len(raw_keys) and len(moves) < 3:
-                            print "AA"
+
+                            print "KEYS PRESSED"
+                            print raw_keys
+
                             key, rt = raw_keys[0]
 
                             # get selected state
                             phase = len(moves)
                             print phase, moves
                             print self.phase_key_state_mapping
-                            selected_state = self.phase_key_state_mapping[phase][key]
+                            try:
+                                selected_state = self.phase_key_state_mapping[phase][key]
+                            except:
+                                pass
                             moves.append(selected_state)
                             move_rts.append(rt)
-                            print "B", moves
+
 
                             # get selected state position on grid
                             pos = self.state_selection_dict[selected_state]
                             pos_selected.append(pos)
+
+                        if change_times[2] < t < change_times[2] + 0.5:
+                            self.photodiode_square.fillColor = 'white'
+                            self.photodiode_square.draw()
+                        else:
+                            self.photodiode_square.fillColor = 'black'
 
 
                     # Show moves
@@ -717,7 +774,14 @@ class ReplayExperiment(object):
                                     if n == self.n_moves and not test:
                                         self.reward_value += float(outcome[state])  # add reward to total
 
-                                self.send_trigger(self.parallel_port2, 0, trigger_dict['State_{0}'.format(n)])
+                                    self.send_trigger(self.parallel_port, 20 + n * 2, self.trigger_dict['State_{0}'.format(n)])
+                                    self.trigger_dict['State_{0}'.format(n)] = True
+
+                                    if change_times[3] + n * self.move_duration < t < change_times[3] + 0.5:
+                                        self.photodiode_square.fillColor = 'white'
+                                        self.photodiode_square.draw()
+                                    else:
+                                        self.photodiode_square.fillColor = 'black'
 
                         if not monitoring_saved['Moves'] and self.monitoring:
                             if moves_states:
@@ -728,6 +792,8 @@ class ReplayExperiment(object):
                                 monitoring_saved['Moves'] = self.save_json(i + 1, len(trial_info), 'Moves', valid_moves,
                                                                            None, outcome,
                                                                            shock_outcome, self.subject_id)
+
+                                    
 
                     # Rest period
                     elif change_times[4] <= t < change_times[5]:
@@ -743,7 +809,14 @@ class ReplayExperiment(object):
                                                                           None, outcome,
                                                                           shock_outcome, self.subject_id)
 
-                        self.send_trigger(self.parallel_port2, 0, trigger_dict['Rest'])
+                        self.send_trigger(self.parallel_port, 30, self.trigger_dict['Rest'])
+                        self.trigger_dict['Rest'] = True
+
+                        if change_times[4] < t < change_times[4] + 0.5:
+                            self.photodiode_square.fillColor = 'white'
+                            self.photodiode_square.draw()
+                        else:
+                            self.photodiode_square.fillColor = 'black'
 
                     # End trial
                     elif t >= change_times[-1]:
@@ -891,12 +964,15 @@ class ReplayExperiment(object):
         if self.display_image.image != picture:
             self.display_image.image = picture
 
+
         # set outcome text either as value or shock
         # self.outcome_image.image = outcome
         if t <= shock_time:
             self.outcome_text.text = outcome
             self.outcome_text.draw()
         elif t > shock_time + shock_delay and shock == 1:
+            # self.send_trigger(self.parallel_port, 60, self.trigger_dict['Shock'])
+            # self.trigger_dict['Shock'] = True
             self.outcome_image.draw()
             self.shocks_given = self.send_shocks(self.shocks_given, n_shocks=self.n_shocks)
         elif t > shock_time and shock == 1:
@@ -1158,14 +1234,27 @@ class ReplayExperiment(object):
 
         return state_keys, phase_key_state_mapping
 
+
     def send_trigger(self, port, data, set):
 
         # Port should be a ParallelPort instance
         if not set:
-            self.win.callOnFlip(port.setData(data))
+            print "A"
+            # self.parallel_port.setData(data)
+            # print trigger
+            self.win.callOnFlip(self.parallel_port.setData, data)
+            # set = True
+            print "A2"
         else:
-            self.win.callOnFlip(port.setData(0))
+            print "B"
+            # self.parallel_port.setData(0)
+            self.win.callOnFlip(self.parallel_port.setData, 0)
+            # TODO FIX THIS
 
+
+def trigger(port, data):
+
+    port.setData(data)
 
 ## RUN THE EXPERIMENT
 
