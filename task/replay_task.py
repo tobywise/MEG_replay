@@ -15,6 +15,7 @@ import copy
 
 
 # TODO gap between move selection and state display
+# TODO individual state markers
 
 class ParallelPort(object):
 
@@ -382,11 +383,6 @@ class ReplayExperiment(object):
         if show_intro:
             self.grand_instructions(["Starting training phase, press space to begin"])
 
-        start_state = [0]
-        random.shuffle(start_state)
-        start_state = start_state[0]
-        self.display_image.setImage(self.stimuli[start_state])
-        # row = self.matrix_keys[start_state, :]
         states = None
 
         for trial in range(self.n_training_trials):
@@ -395,6 +391,11 @@ class ReplayExperiment(object):
             self.instructions(text)
 
             monitoring_saved = {'Training': False}
+
+            moves = []
+
+            current_state = 0
+            self.display_image.setImage(self.stimuli[current_state])
 
             for i in range(self.n_moves + 1):  # TRIAL LOOP - everything in here is repeated each trial
 
@@ -409,7 +410,7 @@ class ReplayExperiment(object):
                 self.clock.reset()
 
                 # Check whether we're at a terminal state
-                if self.matrix[start_state, :].mean() == 0:
+                if self.matrix[current_state, :].mean() == 0:
                     terminal = True
                 else:
                     terminal = False
@@ -419,7 +420,7 @@ class ReplayExperiment(object):
                 else:
                     valid_states = False
 
-                self.display_image.setImage(self.stimuli[start_state])
+                self.display_image.setImage(self.stimuli[current_state])
                 self.display_image.draw()
 
                 ## THIS IS WHERE THEY MAKE THE MOVE
@@ -427,12 +428,14 @@ class ReplayExperiment(object):
                 core.wait(2)
 
                 if trial == 0:
-                    self.setup_state_selection_grid(random_positions=True, valid=valid_states, test=self.testing_mode)
+                    self.setup_state_selection_grid(random_positions=True, valid=valid_states, test=self.testing_mode,
+                                                    initial_state=current_state)
                 else:
-                    self.setup_state_selection_grid(random_positions=False, valid=valid_states, test=self.testing_mode)
+                    self.setup_state_selection_grid(random_positions=False, valid=valid_states, test=self.testing_mode,
+                                                    initial_state=current_state)
                 core.wait(0.5)
 
-                moves = []
+
                 self.win.mouseVisible = True
 
                 if not terminal:
@@ -441,42 +444,43 @@ class ReplayExperiment(object):
                     self.draw_state_selection_grid(selected=pos_selected, test=self.testing_mode)
                     self.win.flip()
 
-                    raw_keys = event.waitKeys(timeStamped=self.clock, keyList=self.valid_moves)
+                    raw_keys = event.waitKeys(timeStamped=self.clock, keyList=self.valid_moves + ['escape', 'esc'])
 
                     if len(raw_keys) and len(moves) < 3:
 
                         key, rt = raw_keys[0]
 
+                        if key in ['escape', 'esc']:
+                            self.save_json(trial + 1, 0, 'Rest', False, None, None, None, self.subject_id,
+                                           stopped='Space')
+                            core.quit()
+
                         # get selected state
                         phase = len(moves)
                         try:
+                            phase = len(moves)
+                            print "KEY"
+                            print phase, key
                             selected_state = self.phase_key_state_mapping[phase][key]
                             moves.append(selected_state)
                             move_rts.append(rt)
+                            print selected_state, moves, self.valid_moves
 
                             # get selected state position on grid
                             pos = self.state_selection_dict[selected_state]
                             pos_selected.append(pos)
+                            current_state = selected_state
                         except:  # if the chosen key doesn't exist in the dictionary for this phase
                             pass
 
-                    start_state = moves[0]
                     # if not monitoring_saved['Training']:
                     #     monitoring_saved['Training'] = self.save_json(i + 1, self.n_training_trials, 'Outcome only',
                     #                                                   True, start_state, None, None, self.subject_id)
 
-                else:
-                    start_state = 0
 
                 # self.display_image.draw()
                 self.win.flip()
                 core.wait(1)
-
-                # quit if subject pressed scape
-                key = event.getKeys(keyList=['escape', 'esc'])
-                if key in ['escape', 'esc']:
-                    self.save_json(trial + 1, 0, 'Rest', False, None, None, None, self.subject_id, stopped='Space')
-                    core.quit()
 
             core.wait(1)
 
@@ -1121,6 +1125,8 @@ class ReplayExperiment(object):
 
         else:
             states = [i for i in self.matrix_asgraph.neighbors(start)]
+            print "CURRENT STATE = {0}".format(start)
+            print states
 
         if end is None:  # task - we don't need the first state
             moves = [self.state_selection_keys[i] for i in states]
@@ -1159,7 +1165,8 @@ class ReplayExperiment(object):
 
         return reward_data.max(axis=1).sum()
 
-    def setup_state_selection_grid(self, random_positions=True, valid=False, selected=(), test=False, training=True):
+    def setup_state_selection_grid(self, random_positions=True, valid=False, selected=(), test=False, training=True,
+                                   initial_state=None):
 
         """
         Assign state images to the imagestim instances that make up the 3 x 3 state selection grid
@@ -1179,14 +1186,16 @@ class ReplayExperiment(object):
 
         # Make invalid images smaller
         if valid:
-            valid_moves, valid_states = self.test_moves(0)
+            if initial_state is None:
+                valid_moves, valid_states = self.test_moves(0)
+            else:
+                valid_moves, valid_states = self.test_moves(initial_state)
             self.valid_moves = valid_moves
             invalid_size = [i / 2. for i in self.config['image sizes']['size_selection_image']]
 
         for n, i in enumerate(self.stimuli[1:]):
             self.state_selection_images[n][1].image = i
-            if test:
-                self.state_selection_images[n][2].text = self.state_selection_keys[n + 1]
+            self.state_selection_images[n][2].text = self.state_selection_keys[n + 1]
             if valid and n + 1 not in valid_states:
                 self.state_selection_images[n][1].size = invalid_size
             else:
@@ -1201,8 +1210,7 @@ class ReplayExperiment(object):
             else:
                 i.opacity = 1
             i.draw()
-            if test:
-                j.draw()
+            j.draw()
 
     def validate_moves(self, moves):
 
@@ -1243,6 +1251,9 @@ class ReplayExperiment(object):
 
                 prev_phase = phase
             prev_n += n + 1
+
+        print state_keys, phase_key_state_mapping
+
 
         return state_keys, phase_key_state_mapping
 

@@ -1,8 +1,8 @@
 Now that you've become familiar with the pictures, we're going to begin the task.
 
-*You will move through the pictures in this task using the arrow keys. You'll see an image on the screen, and then it is up to you to move to another picture using what you learned about the pictures in the training.
+*You will move through the pictures in this task by pressing the number keys, like in the last phase. However, here you'll see the start image on the screen, and then it is up to you to move to another end image using what you learned about the pictures in the training.
 
-*You will enter three movements with the arrow keys, then you will be shown which pictures you have moved through. The moves you make will be displayed as arrows on the screen as you press the arrow keys. When the third image is displayed on the screen, you will also see a monetary reward value that will be added to your total winnings.
+*You will enter three movements by pressing the number keys corresponding to the images you want to choose on the grid, then you will be shown which pictures you have moved through. When the third image is displayed on the screen, you will also see a monetary reward value that will be added to your total winnings. You may also see a shock icon, which will come at the same time as you receive a mild shock to your hand.
 
 *Remember, your goal is to find the picture with the highest reward value. This image will change frequently across trials.
 
