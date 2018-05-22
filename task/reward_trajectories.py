@@ -162,3 +162,4 @@ plt.tight_layout()
 
 if save:
     plt.savefig('Slides/random_walks_shocks.svg')
+
