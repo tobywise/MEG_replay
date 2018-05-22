@@ -8,6 +8,6 @@ After entering your movements, you will be shown the images you have just moved 
 
 *During some trials, which will be labeled as "OUTCOME ONLY," you will not be able to make any moves, but you will be shown a picture and a reward value as if you made moves yourself.
 
-*Throughout the task, you will be given a shock upon encountering a certain image. This image will be associated with a shock for some trials, but across trials, the image associated with the shock will change frequently.
+*Throughout the task, you will be given a shock upon encountering a certain image. This image will be associated with a shock for some trials, but across trials, the image associated with the shock will change frequently. In addition to this, each image has a small chance of randomly shocking you.
 
 *If you don't have any questions, press the spacebar to begin.
