@@ -9,12 +9,12 @@ task_settings:
   n_trials_standard: 210
   n_trials_text: 150
   n_stimuli: 11
-  percentage_small: 20
+  percentage_small: 30
   percentage_null: 5
 image_sizes:
   size_display_image: !!python/tuple [11, 11]  #
   size_display_image_small: !!python/tuple [10.5, 10.5]  #
-  test_alpha: 0.8
+  test_alpha: 0.7
 directories:
   stimuli_path: '../Task/Stimuli'
   saved_data: 'Data/'

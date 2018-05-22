@@ -117,6 +117,7 @@ class Localiser(object):
                 # self.main_text.draw()
                 small = True
                 self.possible_correct += 1
+                print "TEST TRIAL"
             elif small > 100 - self.config['task_settings']['percentage_null']:  # null trials
                 null = True
             else:
@@ -202,6 +203,8 @@ class Localiser(object):
         self.stimuli = [os.path.join(stimuli_location, i) for i in os.listdir(stimuli_location)
                         if ('.png' in i or '.jpg' in i or '.jpeg' in i) and 'shock' not in i][
                        :self.config['task_settings']['n_stimuli']]
+
+        self.order = int(self.order)               
 
         for i in range(n_runs[self.order]):
 
