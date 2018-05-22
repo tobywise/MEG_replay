@@ -459,12 +459,9 @@ class ReplayExperiment(object):
                         phase = len(moves)
                         try:
                             phase = len(moves)
-                            print "KEY"
-                            print phase, key
                             selected_state = self.phase_key_state_mapping[phase][key]
                             moves.append(selected_state)
                             move_rts.append(rt)
-                            print selected_state, moves, self.valid_moves
 
                             # get selected state position on grid
                             pos = self.state_selection_dict[selected_state]
@@ -1125,8 +1122,6 @@ class ReplayExperiment(object):
 
         else:
             states = [i for i in self.matrix_asgraph.neighbors(start)]
-            print "CURRENT STATE = {0}".format(start)
-            print states
 
         if end is None:  # task - we don't need the first state
             moves = [self.state_selection_keys[i] for i in states]
@@ -1251,9 +1246,6 @@ class ReplayExperiment(object):
 
                 prev_phase = phase
             prev_n += n + 1
-
-        print state_keys, phase_key_state_mapping
-
 
         return state_keys, phase_key_state_mapping
 
