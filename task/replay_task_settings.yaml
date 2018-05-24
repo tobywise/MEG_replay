@@ -8,7 +8,7 @@ number training trials:
 durations:
   start_duration: 2  #
   pre_move_duration: 1  # 'Get ready to enter moves' duration
-  move_entering_duration: 3  # Time given to enter moves
+  move_entering_duration: 5  # Time given to enter moves
   move_durations: 1.8  # Time each move is shown for
   outcome_only_text_duration: 2  #
   outcome_only_duration: 3  #
