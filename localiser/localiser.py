@@ -140,7 +140,7 @@ class Localiser(object):
 
             if not null:
                 self.image.draw()
-                self.win.callOnFlip(self.parallel_port.setData, image_idx)
+                self.win.callOnFlip(self.parallel_port.setData, image_idx + 1)
             else:
                 self.fixation.draw()
                 self.win.callOnFlip(self.parallel_port.setData, 99)
