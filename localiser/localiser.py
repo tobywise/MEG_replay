@@ -31,7 +31,7 @@ class ParallelPort(object):
 
 class Localiser(object):
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, block=0):
 
         with open(config) as f:
             self.config = yaml.load(f)
@@ -75,6 +75,7 @@ class Localiser(object):
 
         self.n_correct = 0
         self.possible_correct = 0
+        self.block = block
 
         self.variants = ['standard', 'text']
 
@@ -100,7 +101,7 @@ class Localiser(object):
 
             self.parallel_port.setData(0)
 
-            print "Trial {0} / {1}".format(i+1, self.config['task_settings']['n_trials_{0}'.format(variant)])
+            print "Trial {0} / {1}, block {2}".format(i+1, self.config['task_settings']['n_trials_{0}'.format(variant)], self.block)
 
             null = False
 
@@ -140,7 +141,7 @@ class Localiser(object):
 
             if not null:
                 self.image.draw()
-                self.win.callOnFlip(self.parallel_port.setData, image_idx)
+                self.win.callOnFlip(self.parallel_port.setData, image_idx + 1)
             else:
                 self.fixation.draw()
                 self.win.callOnFlip(self.parallel_port.setData, 99)
@@ -210,7 +211,7 @@ class Localiser(object):
 
             print "Block {0} of {1}, {2} variant".format(i + 1, n_runs[self.order], self.variants[self.order])
 
-            self.run_localiser(self.variants[self.order])
+            self.run_localiser(self.variants[self.order], i+1)
             self.instructions("Take a break", fixation=False)
             self.instructions("We are about to begin, please keep your head still until the next break")
 
@@ -225,7 +226,7 @@ class Localiser(object):
 
             print "Block {0} of {1}, {2} variant".format(i + 1, n_runs[1 - self.order], self.variants[1 - self.order])
 
-            self.run_localiser(self.variants[1 - self.order])
+            self.run_localiser(self.variants[1 - self.order], i+1)
 
             if i < n_runs[1 - self.order] - 1:
                 self.instructions("Take a break", fixation=False)
