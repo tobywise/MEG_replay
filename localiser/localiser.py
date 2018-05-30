@@ -84,7 +84,9 @@ class Localiser(object):
         self.save_folder = self.config['directories']['saved_data']
         self.save_prefix = self.config['filenames']['save_prefix']
 
-    def run_localiser(self, variant=None):
+    def run_localiser(self, variant=None, block=0):
+
+        self.block = block
 
         if variant == 'text':
             text = True
@@ -197,7 +199,7 @@ class Localiser(object):
         self.instructions("Welcome to the task", fixation=False)
         self.instructions("We are about to begin, please keep your head still until the next break")
 
-        n_runs = [4, 5]
+        n_runs = [4, 4]
 
         stimuli_location = self.config['directories']['stimuli_path']
 
