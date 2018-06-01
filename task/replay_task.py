@@ -12,10 +12,8 @@ import json
 import ctypes
 import time
 import copy
+import re
 
-
-# TODO gap between move selection and state display
-# TODO individual state markers
 
 class ParallelPort(object):
 
@@ -94,7 +92,11 @@ class ReplayExperiment(object):
         else:
             self.durations = 'durations'
 
-        random.seed(self.subject_id)  # all randomness will be the same every time the subject does the task
+        # Recode blank subject ID to zero - useful for testing
+        if self.subject_id == '':
+            self.subject_id = '0'
+
+        random.seed(int(re.search('\d+', self.subject_id).group()))  # all randomness will be the same every time the subject does the task
 
         # This part sets up various things to allow us to save the data
         self.script_location = os.path.dirname(__file__)
@@ -124,8 +126,10 @@ class ReplayExperiment(object):
         # Load trial information
         self.trial_info = pd.read_csv(self.config['directories']['trial_info'])
         self.trial_info = self.trial_info.round(2)  # ensures reward values are displayed nicely
-
         self.trial_info_test = pd.read_csv(self.config['directories']['trial_info_test'])
+
+        # Number of trials per block
+        self.trials_per_block = self.config[self.durations]['trials_per_block']
 
         # Check for missing data
         assert np.all(~self.trial_info.isnull())
@@ -281,6 +285,10 @@ class ReplayExperiment(object):
 
         # Run test phase
         if self._run_test:
+            self.move_entering_duration = self.config[self.durations]['move_entering_duration_initial']
+            self.move_entering_duration_step = (self.config[self.durations]['move_entering_duration_initial'] -
+                                                self.config[self.durations]['move_entering_duration'])  / \
+                                               float(self.config[self.durations]['move_entering_reduction_length'])
             test_passed = self.run_test()
             core.wait(1)
 
@@ -296,6 +304,7 @@ class ReplayExperiment(object):
 
         # Run task
         if self._run_main_task:
+            self.move_entering_duration = self.config[self.durations]['move_entering_duration']
             self.run_task()
 
         # Show end screen
@@ -501,9 +510,16 @@ class ReplayExperiment(object):
         self.clock = core.Clock()
 
         # Durations
-        self.start_duration = self.config[self.durations]['start_duration']
+        if test:
+            # Shorter planning and rest periods in test phase
+            self.start_duration = self.config[self.durations]['start_duration_test']
+            self.rest_duration = self.config[self.durations]['rest_duration_test']
+        else:
+            self.start_duration = self.config[self.durations]['start_duration']
+            self.rest_duration = self.config[self.durations]['rest_duration']
         self.pre_move_duration = self.config[self.durations]['pre_move_duration']
-        self.move_entering_duration = self.config[self.durations]['move_entering_duration']
+        # self.move_entering_duration = self.config[self.durations]['move_entering_duration']
+        self.pre_move_fixation_duration = self.config[self.durations]['pre_move_fixation_duration']
         self.move_duration = self.config[self.durations]['move_durations']
         self.move_period_duration = self.move_duration * (self.n_moves + 1)
 
@@ -543,6 +559,8 @@ class ReplayExperiment(object):
 
         for i in range(n_trials):  # TRIAL LOOP - everything in here is repeated each trial
 
+            print self.move_entering_duration
+
             print "Trial {0} / {1}".format(i + 1, n_trials)
 
             # self.io.clearEvents('all')  # clear keyboard events
@@ -550,7 +568,8 @@ class ReplayExperiment(object):
             continue_trial = True  # this variable changes to False when we want to stop the trial
 
             change_times = list(np.cumsum([0, self.start_duration, self.pre_move_duration, self.move_entering_duration,
-                                           self.move_period_duration, self.config[self.durations]['rest_duration']]))
+                                           self.pre_move_fixation_duration, self.move_period_duration,
+                                           self.rest_duration]))
 
             outcome_only_change_times = list(np.cumsum([0, self.config[self.durations]['outcome_only_text_duration'],
                                                         self.config[self.durations]['outcome_only_duration'],
@@ -628,16 +647,18 @@ class ReplayExperiment(object):
                             'Outcome_only_outcome': False}
 
 
-            if i % 25 == 0 and self.MEG_mode:
+            if not i % self.trials_per_block and self.MEG_mode:
                 if i == 0:
-                    self.grand_instructions(["Welcome to the experiment"])
+                    self.grand_instructions(["We are about to start the experiment"])
                 else:
-                    self.grand_instructions(["BREAK"])
-                self.grand_instructions(["We are about to start a new block, please keep as still as possible for the duration of the block"])
+                    self.grand_instructions(["Take a break"])
+                self.grand_instructions(["We are about to start a new block, please keep as "
+                                         "still as possible for the duration of the block"])
 
             self.clock.reset()
 
             while continue_trial:  # run the trial
+
                 start = time.time()
                 t = self.clock.getTime()  # get the time
 
@@ -650,7 +671,7 @@ class ReplayExperiment(object):
                         text = "Outcome only"
                         self.instructions(text, max_wait=0)
 
-                        self.send_trigger(2, self.trigger_dict['Outcome_only_warning'])
+                        self.send_trigger(80, self.trigger_dict['Outcome_only_warning'])
                         self.trigger_dict['Outcome_only_warning'] = True
 
                         if not monitoring_saved['Outcome'] and self.monitoring:
@@ -674,7 +695,7 @@ class ReplayExperiment(object):
                                            'outcome_only_duration'] / 2.,
                                        show_moves=False, shock_delay=self.shock_delay)
 
-                        self.send_trigger(4, self.trigger_dict['Outcome_only_outcome'])
+                        self.send_trigger(40, self.trigger_dict['Outcome_only_outcome'])
                         self.trigger_dict['Outcome_only_outcome'] = True
 
                         if self.MEG_mode:
@@ -704,7 +725,7 @@ class ReplayExperiment(object):
                                                                           None,
                                                                           outcome, shock_outcome, self.subject_id)
 
-                        self.send_trigger(6, self.trigger_dict['Planning'])
+                        self.send_trigger(60, self.trigger_dict['Planning'])
                         self.trigger_dict['Planning'] = True
 
                         if self.MEG_mode:
@@ -721,7 +742,7 @@ class ReplayExperiment(object):
                         event.clearEvents()
                         self.display_image.setPos((0, 0))
 
-                        self.send_trigger(10, self.trigger_dict['Move_entering'])
+                        self.send_trigger(100, self.trigger_dict['Move_entering'])
                         self.trigger_dict['Move_entering'] = True
 
                         if self.MEG_mode:
@@ -767,10 +788,13 @@ class ReplayExperiment(object):
                             else:
                                 self.photodiode_square.fillColor = 'black'
 
+                    elif change_times[3] <= t < change_times[4]:  # Fixation before moves are shown
+
+                        self.fixation.draw()
 
                     # Show moves
 
-                    elif change_times[3] <= t < change_times[4]:
+                    elif change_times[4] <= t < change_times[5]:
                         # Validate moves
                         if not moves_validated:
                             valid_moves = self.validate_moves([0] + moves)
@@ -786,14 +810,17 @@ class ReplayExperiment(object):
                         # Show moves
                         else:
                             for n, state in enumerate([0] + moves):
-                                if change_times[3] + n * self.move_duration <= t < change_times[3] + (
+
+                                if change_times[4] + n * self.move_duration <= t < change_times[5] + (
                                         n + 1) * self.move_duration:
+
                                     self.show_move(outcome[state], shock_outcome[state], self.stimuli[state], t,
                                                    change_times[3] + n * self.move_duration + self.move_duration / 2.)
+
                                     if n == self.n_moves and not test:
                                         self.reward_value += float(outcome[state])  # add reward to total
 
-                                    self.send_trigger(20 + n * 2, self.trigger_dict['State_{0}'.format(n)])
+                                    self.send_trigger((n + 1) * 2, self.trigger_dict['State_{0}'.format(n)])
                                     self.trigger_dict['State_{0}'.format(n)] = True
 
                                     if self.MEG_mode:
@@ -813,10 +840,9 @@ class ReplayExperiment(object):
                                                                            None, outcome,
                                                                            shock_outcome, self.subject_id)
 
-                                    
 
                     # Rest period
-                    elif change_times[4] <= t < change_times[5]:
+                    elif change_times[5] <= t < change_times[6]:
                         self.fixation.draw()
 
                         if not monitoring_saved['Rest'] and self.monitoring:
@@ -852,6 +878,10 @@ class ReplayExperiment(object):
                     # Responses
                     self.response_data['trial_number'] = i
                     self.response_data['Subject'] = self.subject_id
+
+                    # Reduce move entering duration
+                    if test and self.move_entering_duration > self.config[self.durations]['move_entering_duration']:
+                        self.move_entering_duration -= self.move_entering_duration_step
 
                     if trial_info['trial_type'][i] == 1:
                         for n in range(0, 3):
@@ -894,14 +924,15 @@ class ReplayExperiment(object):
                     if not monitoring_saved['Pause'] and self.monitoring:
                         monitoring_saved['Pause'] = self.save_json(i + 1, len(trial_info), 'Pause', valid_moves,
                                                                    None, None, None, self.subject_id, stopped='Space')
-                    event.waitKeys(['space', ' '])
+                    event.waitKeys(['space', ' ', '1'])
 
                 # quit if subject pressed scape
                 if event.getKeys(["escape", "esc"]):
-                    if self.monitoring:
-                        self.save_json(i + 1, len(trial_info), 'Escape', valid_moves, None, None, None, self.subject_id,
-                                       stopped='Escape')
+                    # if self.monitoring:
+                    #     self.save_json(i + 1, len(trial_info), 'Escape', valid_moves, None, None, None, self.subject_id,
+                    #                    stopped='Escape')
                     core.quit()
+
 
         return False
 
@@ -960,7 +991,7 @@ class ReplayExperiment(object):
 
         return shocks_given
 
-    def show_move(self, outcome, shock, picture, t, shock_time, show_moves=True, shock_delay=0.5):
+    def show_move(self, outcome, shock, picture, t, shock_time, show_moves=True, shock_delay=0.8):
 
         """
         Shows the image and (potentially) outcome associated with a state
@@ -1018,7 +1049,7 @@ class ReplayExperiment(object):
         if max_wait > 0:
             self.win.flip()
         # waitkeys
-        event.waitKeys(maxWait=max_wait, keyList='space')
+        event.waitKeys(maxWait=max_wait, keyList=['space', '1'])
 
     def grand_instructions(self, text_file):
 
@@ -1040,7 +1071,7 @@ class ReplayExperiment(object):
             self.instruction_text.draw()
             self.win.flip()
             core.wait(1)
-            key = event.waitKeys(keyList=['space', 'escape', 'esc'])
+            key = event.waitKeys(keyList=['space', 'escape', 'esc', '1'])
             if key[0] in ['escape', 'esc']:
                 core.quit()
 

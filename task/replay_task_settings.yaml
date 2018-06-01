@@ -6,27 +6,39 @@ number training trials:
   n_test_trials: 20  # Number of trials in the test session
   n_test_successes: 8  # Number of consecutive successes required to pass the test phase
 durations:
-  start_duration: 2  #
+  start_duration: 2  # Planning phase duration
+  start_duration_test: 2  # Planning phase duration - test phase
   pre_move_duration: 1  # 'Get ready to enter moves' duration
+  move_entering_duration_initial: 6  # Initial time given to enter moves in test phase, this reduces gradually
+  move_entering_reduction_length: 40 # Number of trials before move entering duration reaches the true duration
   move_entering_duration: 3  # Time given to enter moves
+  pre_move_fixation_duration: 0.5 # Fixation before moves are shown
   move_durations: 1.8  # Time each move is shown for
   outcome_only_text_duration: 2  #
   outcome_only_duration: 3  #
   rest_duration: 2  # Rest after outcome
+  rest_duration_test: 2  # Rest after outcome
   shock_delay: 0.5  # Delay before shocks are given following the shock image
   n_moves: 3  # Number of moves subjects make
   n_shocks: 5  # Number of shocks in each shock train
+  trials_per_block: 2
 MEG_durations:
-  start_duration: 8  #
+  start_duration: 8  # Planning phase duration
+  start_duration_test: 2  # Planning phase duration - test phase
   pre_move_duration: 1  # 'Get ready to enter moves' duration
+  move_entering_duration_initial: 6  # Initial time given to enter moves in test phase, this reduces gradually
+  move_entering_reduction_length: 40 # Number of trials before move entering duration reaches the true duration
   move_entering_duration: 3  # Time given to enter moves
+  pre_move_fixation_duration: 0.5 # Fixation before moves are shown
   move_durations: 2  # Time each move is shown for
   outcome_only_text_duration: 2  #
   outcome_only_duration: 3  #
   rest_duration: 8  # Rest after outcome
+  rest_duration_test: 2  # Rest after outcome - test phase
   shock_delay: 0.5  # Delay before shocks are given following the shock image
   n_moves: 3  # Number of moves subjects make
   n_shocks: 5  # Number of shocks in each shock train
+  trials_per_block: 2
 directories:
   saved_data: 'Data/behavioural/pilot'
   stimuli_path: 'Stimuli'
