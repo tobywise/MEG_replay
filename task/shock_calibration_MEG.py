@@ -2,7 +2,7 @@ import ctypes
 from psychopy import core, visual, monitors, event
 import random
 
-test = True
+test = False
 
 class ParallelPort(object):
 
