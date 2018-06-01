@@ -64,6 +64,7 @@ class ReplayExperiment(object):
         dialogue.addField('MEG', initial=False)
         dialogue.show()
 
+
         # check that values are OK and assign them to variables
         if dialogue.OK:
             self.subject_id = dialogue.data[0]
