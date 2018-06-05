@@ -14,6 +14,7 @@ import time
 import copy
 import re
 
+# TODO gradually reduce start time in test phase
 
 class ParallelPort(object):
 
@@ -821,7 +822,7 @@ class ReplayExperiment(object):
                                     if n == self.n_moves and not test:
                                         self.reward_value += float(outcome[state])  # add reward to total
 
-                                    self.send_trigger((n + 1) * 2, self.trigger_dict['State_{0}'.format(n)])
+                                    self.send_trigger((state + 1) * 2, self.trigger_dict['State_{0}'.format(n)])
                                     self.trigger_dict['State_{0}'.format(n)] = True
 
                                     if self.MEG_mode:
