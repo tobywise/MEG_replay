@@ -11,6 +11,9 @@ import networkx as nx
 import json
 import ctypes
 import time
+import copy
+import re
+
 
 class ParallelPort(object):
 
@@ -25,7 +28,7 @@ class ParallelPort(object):
         if not self.test:
             self._parallel.outp(self.port, data)
         else:
-            print "-"
+            pass
 
 
 class ReplayExperiment(object):
@@ -57,7 +60,10 @@ class ReplayExperiment(object):
         dialogue.addField('Test', initial=True)
         dialogue.addField('Task', initial=True)
         dialogue.addField('Parallel port testing', initial=False)
+        dialogue.addField('Monitor', initial=False)
+        dialogue.addField('MEG', initial=False)
         dialogue.show()
+
 
         # check that values are OK and assign them to variables
         if dialogue.OK:
@@ -69,17 +75,29 @@ class ReplayExperiment(object):
             self._run_test = dialogue.data[5]
             self._run_main_task = dialogue.data[6]
             self._parallel_port = dialogue.data[7]
+            self.monitoring = dialogue.data[8]
+            self.MEG_mode = dialogue.data[9]
         else:
             core.quit()
 
         # Set task mode - used for testing etc
         # 'Experiment' = normal, 'Testing' = show valid moves before move entering phase
         if self.mode == 'Testing':
-            self.show_valid_moves = True
+            self.testing_mode = True
         else:
-            self.show_valid_moves = False
+            self.testing_mode = False
 
-        random.seed(self.subject_id)  # all randomness will be the same every time the subject does the task
+        # MEG mode
+        if self.MEG_mode:
+            self.durations = 'MEG_durations'
+        else:
+            self.durations = 'durations'
+
+        # Recode blank subject ID to zero - useful for testing
+        if self.subject_id == '':
+            self.subject_id = '0'
+
+        random.seed(int(re.search('\d+', self.subject_id).group()))  # all randomness will be the same every time the subject does the task
 
         # This part sets up various things to allow us to save the data
         self.script_location = os.path.dirname(__file__)
@@ -93,7 +111,7 @@ class ReplayExperiment(object):
         # Task settings #
         # ------------- #
 
-        self.n_moves = self.config['durations']['n_moves']  # number of moves subjects are expected to make
+        self.n_moves = self.config[self.durations]['n_moves']  # number of moves subjects are expected to make
         self.n_training_trials = self.config['number training trials']['n_training_trials']  # number of training trials
         self.n_test_trials = self.config['number training trials']['n_test_trials']  # number of training trials
 
@@ -104,13 +122,15 @@ class ReplayExperiment(object):
         self.n_training_trials = self.config['number training trials']['n_training_trials']
 
         # Number of moves that subjects make
-        self.n_moves = self.config['durations']['n_moves']
+        self.n_moves = self.config[self.durations]['n_moves']
 
         # Load trial information
         self.trial_info = pd.read_csv(self.config['directories']['trial_info'])
         self.trial_info = self.trial_info.round(2)  # ensures reward values are displayed nicely
-
         self.trial_info_test = pd.read_csv(self.config['directories']['trial_info_test'])
+
+        # Number of trials per block
+        self.trials_per_block = self.config[self.durations]['trials_per_block']
 
         # Check for missing data
         assert np.all(~self.trial_info.isnull())
@@ -127,8 +147,10 @@ class ReplayExperiment(object):
         print "Maximum available reward = {0}".format(self.max_reward)
 
         # Things to save
-        self.data_keys = ['Subject', 'trial_number', 'Move_1', 'Move_2', 'Move_3', 'State_1', 'State_2', 'State_3',
-                          'RT_1', 'RT_2', 'RT_3', 'Reward', 'Shock', 'trial_type']
+        self.data_keys = ['Subject', 'trial_number', 'State_1', 'State_2', 'State_3',
+                          'RT_1', 'RT_2', 'RT_3', 'Reward_received', 'Shock_received', 'trial_type',
+                          'State_1_reward', 'State_2_reward', 'State_3_reward', 'State_4_reward',
+                          'State_1_shock', 'State_2_shock', 'State_3_shock', 'State_4_shock']
         self.response_data = dict(zip(self.data_keys, [None for i in self.data_keys]))
 
         # Save file information
@@ -141,19 +163,16 @@ class ReplayExperiment(object):
 
         monitor = monitors.Monitor('test2', width=40.92, distance=74)
         monitor.setSizePix((1024, 768))
-        self.win = visual.Window(monitor=monitor, size=(1024, 768), fullscr=True, allowGUI=False, color='gray', units='deg',
-                            colorSpace='hex')
-        self.win.mouseVisible = False  # make the mouse invisible
+        self.win = visual.Window(monitor=monitor, size=(1024, 768), fullscr=True, allowGUI=False, color='gray',
+                                 units='deg',
+                                 colorSpace='hex')
+        # self.win.mouseVisible = False  # make the mouse invisible
 
-        self.win.recordFrameIntervals = True
+        # self.win.recordFrameIntervals = True
 
-        # By default, the threshold is set to 120% of the estimated refresh
-        # duration, but arbitrary values can be set.
-        #
-        # I've got 85Hz monitor and want to allow 4 ms tolerance; any refresh that
-        # takes longer than the specified period will be considered a "dropped"
-        # frame and increase the count of win.nDroppedFrames.
-        self.win.refreshThreshold = 1/60. + 0.004
+        self.mouse = event.Mouse()
+
+        self.win.refreshThreshold = 1 / 60. + 0.004  # for checking for dropped frames
 
         # Set the log module to report warnings to the standard output window
         # (default is errors only).
@@ -161,11 +180,12 @@ class ReplayExperiment(object):
 
         # Keys used for making moves
         self.response_keys = self.config['response keys']['response_keys']
+        self.response_phases = self.config['response keys']['response_phases']  # levels of the tree
 
         # Set up parallel port
         self.parallel_port = ParallelPort(port=888, test=self._parallel_port)
-        self.n_shocks = self.config['durations']['n_shocks']
-        self.shock_delay = self.config['durations']['shock_delay']
+        self.n_shocks = self.config[self.durations]['n_shocks']
+        self.shock_delay = self.config[self.durations]['shock_delay']
 
         # --------#
         # Stimuli #
@@ -182,7 +202,7 @@ class ReplayExperiment(object):
         self.main_text.font = self.config['fonts']['font_name']
         # Reward value text
         self.outcome_text = visual.TextStim(win=self.win, height=1.5, color='white',
-                                         pos=(0, 7), wrapWidth=30)
+                                            pos=(0, 7), wrapWidth=30)
         self.outcome_text.fontFiles = [self.config['fonts']['font_path']]
         self.outcome_text.font = self.config['fonts']['font_name']
         # Instruction text
@@ -190,19 +210,12 @@ class ReplayExperiment(object):
         self.instruction_text.fontFiles = [self.config['fonts']['font_path']]
         self.instruction_text.font = self.config['fonts']['font_name']
 
-
         # Image stimuli #
 
         # Image-related settings
         self.image_size = self.config['image sizes']['size_image_size']
-        self.arrow_gap = self.config['arrow positions']['arrow_gap']  # gap between arrows
 
         # Find image files
-
-        # Images used for displaying arrows
-        self.arrow_images = {}
-        for n in self.response_keys:
-            self.arrow_images[n] = os.path.join(self.config['directories']['arrow_path'], '{0}.png'.format(n))
 
         # Circle used to indicate the current move
         self.circle = visual.Circle(win=self.win, radius=1, fillColor=None, lineColor=[1, 1, 1], pos=(0, -8))
@@ -210,9 +223,24 @@ class ReplayExperiment(object):
         # State image files
         stimuli_location = self.config['directories']['stimuli_path']
         self.stimuli = [os.path.join(stimuli_location, i) for i in os.listdir(stimuli_location)
-                   if ('.png' in i or '.jpg' in i or '.jpeg' in i) and 'shock' not in i]
+                        if ('.png' in i or '.jpg' in i or '.jpeg' in i) and 'shock' not in i][:self.matrix.shape[0]]
 
         random.shuffle(self.stimuli)  # make sure stimuli are randomly assigned to states
+
+        # State selection images
+        self.state_selection_images = []  # list of tuples, (image id, imagestim)
+        # Create a 3x3 grid of images
+
+        for i in range(len(self.stimuli[1:])):
+            pos = (((i % 5) - 2) * self.config['image sizes']['state_selection_spacing'],
+                   (np.floor(i / 5) - 0.5) * self.config['image sizes']['state_selection_spacing'])
+            self.state_selection_images.append((i, visual.ImageStim(win=self.win,
+                                                                    size=self.config['image sizes'][
+                                                                        'size_selection_image'],
+                                                                    pos=pos),
+                                                visual.TextStim(win=self.win, pos=pos, height=5, color='yellow')))
+
+        self.state_selection_dict = None
 
         # Create some ImageStim instances
 
@@ -224,11 +252,6 @@ class ReplayExperiment(object):
         # End state image in test phase
         self.display_image_test = visual.ImageStim(win=self.win, size=self.config['image sizes']['size_display_image'],
                                                    pos=(10, 0))
-        # Image to display the key being pressed
-        self.arrow_display = visual.ImageStim(win=self.win, size=self.config['image sizes']['size_arrow_display'])
-
-        # Create the arrow stimuli
-        self.arrow_positions, self.arrow_progress = self.create_arrows(self.n_moves)
 
         # Arrow used in test phase to indicate the end state
         self.test_arrow = visual.ImageStim(win=self.win, size=(1.5, 2),
@@ -240,6 +263,9 @@ class ReplayExperiment(object):
         self.training_instructions = self.load_instructions(self.config['directories']['training_instructions'])
         self.task_instructions = self.load_instructions(self.config['directories']['task_instructions'])
         self.test_instructions = self.load_instructions(self.config['directories']['test_instructions'])
+
+        # Photodiode things
+        self.photodiode_square = visual.Rect(self.win, 1, 1, fillColor='black', pos=(-15.5, -9.5))
 
     def run(self):
 
@@ -260,9 +286,13 @@ class ReplayExperiment(object):
 
         # Run test phase
         if self._run_test:
+            self.move_entering_duration = self.config[self.durations]['move_entering_duration_initial']
+            self.move_entering_duration_step = (self.config[self.durations]['move_entering_duration_initial'] -
+                                                self.config[self.durations]['move_entering_duration'])  / \
+                                               float(self.config[self.durations]['move_entering_reduction_length'])
             test_passed = self.run_test()
             core.wait(1)
-        print "AAA"
+
         # Rerun training and test if not passed, until they pass the test
         if self._run_training and self._run_test:
             while not test_passed:
@@ -275,6 +305,7 @@ class ReplayExperiment(object):
 
         # Run task
         if self._run_main_task:
+            self.move_entering_duration = self.config[self.durations]['move_entering_duration']
             self.run_task()
 
         # Show end screen
@@ -297,7 +328,8 @@ class ReplayExperiment(object):
         """
 
         self.grand_instructions(['End of experiment\n'
-                                 'You collected {0}% of the maximum available rewards'.format(np.round(self.reward_value / self.max_reward))])
+                                 'You collected {0}% of the maximum available rewards'.format(
+            np.round(self.reward_value / self.max_reward))])
         self.win.flip()
         core.wait(10)
 
@@ -306,7 +338,8 @@ class ReplayExperiment(object):
         try:
             self.__run_training(show_instructions=show_instructions, show_intro=show_intro)
         except:
-            self.save_json(1, 1, 'Crash', False, None, None, None, self.subject_id, stopped='Crash')
+            if self.monitoring:
+                self.save_json(1, 1, 'Crash', False, None, None, None, self.subject_id, stopped='Crash')
             raise
 
     def run_test(self, show_instructions=True, show_intro=False):
@@ -321,9 +354,9 @@ class ReplayExperiment(object):
                                      show_instructions=show_instructions, show_intro=show_intro)
             return result
         except:
-            self.save_json(1, 1, 'Crash', False, None, None, None, self.subject_id, stopped='Crash')
+            if self.monitoring:
+                self.save_json(1, 1, 'Crash', False, None, None, None, self.subject_id, stopped='Crash')
             raise
-            
 
     def run_task(self):
 
@@ -335,9 +368,9 @@ class ReplayExperiment(object):
         try:
             self.__run_task(instructions=self.task_instructions, trial_info=self.trial_info)
         except:
-            self.save_json(1, 1, 'Crash', False, None, None, None, self.subject_id, stopped='Crash')
+            if self.monitoring:
+                self.save_json(1, 1, 'Crash', False, None, None, None, self.subject_id, stopped='Crash')
             raise
-
 
     def __run_training(self, show_instructions=True, show_intro=False):
 
@@ -349,11 +382,11 @@ class ReplayExperiment(object):
         # Clock
         self.clock = core.Clock()
 
-        self.start_duration = self.config['durations']['start_duration']
-        self.pre_move_duration = self.config['durations']['pre_move_duration']
-        self.move_entering_duration = self.config['durations']['move_entering_duration']
-        self.move_duration = self.config['durations']['move_durations']
-        self.move_period_duration = self.move_duration * self.n_moves
+        self.start_duration = self.config[self.durations]['start_duration']
+        self.pre_move_duration = self.config[self.durations]['pre_move_duration']
+        self.move_entering_duration = self.config[self.durations]['move_entering_duration']
+        self.move_duration = self.config[self.durations]['move_durations']
+        self.move_period_duration = self.move_duration * (self.n_moves + 1)
 
         test_moves = np.repeat(['up', 'down', 'left', 'right'], 5)
 
@@ -363,11 +396,6 @@ class ReplayExperiment(object):
         if show_intro:
             self.grand_instructions(["Starting training phase, press space to begin"])
 
-        start_state = [0]
-        random.shuffle(start_state)
-        start_state = start_state[0]
-        self.display_image.setImage(self.stimuli[start_state])
-        # row = self.matrix_keys[start_state, :]
         states = None
 
         for trial in range(self.n_training_trials):
@@ -377,9 +405,17 @@ class ReplayExperiment(object):
 
             monitoring_saved = {'Training': False}
 
+            moves = []
+
+            current_state = 0
+            self.display_image.setImage(self.stimuli[current_state])
+
             for i in range(self.n_moves + 1):  # TRIAL LOOP - everything in here is repeated each trial
 
                 print "Move {0} / {1}".format(i + 1, self.n_training_trials)
+
+                pos_selected = []
+                move_rts = []
 
                 # self.io.clearEvents('all')  # clear keyboard events
 
@@ -387,70 +423,76 @@ class ReplayExperiment(object):
                 self.clock.reset()
 
                 # Check whether we're at a terminal state
-                if self.matrix[start_state, :].mean() == 0:
+                if self.matrix[current_state, :].mean() == 0:
                     terminal = True
                 else:
                     terminal = False
 
-                moves_found = False
-                moves_to_enter = []
-
                 if not terminal:
-                    while not moves_found:
-                        random.shuffle(test_moves)
-                        moves_to_enter = self.test_moves(start_state)
-                        # print moves_to_enter
-                        if moves_to_enter is not False:
-                            moves_found = True
+                    valid_states = True
+                else:
+                    valid_states = False
 
-
-                training_arrow_positions, training_arrows = self.create_arrows(len(moves_to_enter))
-
-                training_move_positions = {}
-
-                for n, i in enumerate(moves_to_enter):
-                    training_arrows[n].image = self.arrow_images[i]
-                    training_arrows[n].draw()
-                    training_move_positions[i] = training_arrows[n].pos
-
-                self.display_image.setImage(self.stimuli[start_state])
+                self.display_image.setImage(self.stimuli[current_state])
                 self.display_image.draw()
-                #self.arrow_display.image = self.arrow_images[key]
-                # self.arrow_display.setImage(training_arrows)
-
 
                 ## THIS IS WHERE THEY MAKE THE MOVE
                 self.win.flip()
+                core.wait(2)
+
+                if trial == 0:
+                    self.setup_state_selection_grid(random_positions=True, valid=valid_states, test=self.testing_mode,
+                                                    initial_state=current_state)
+                else:
+                    self.setup_state_selection_grid(random_positions=False, valid=valid_states, test=self.testing_mode,
+                                                    initial_state=current_state)
+                core.wait(0.5)
+
+
+                self.win.mouseVisible = True
 
                 if not terminal:
-                    key = event.waitKeys(keyList=moves_to_enter + ['escape', 'esc'])[0]
-                    if key in ['escape', 'esc']:
-                        self.save_json(i + 1, 0, 'Rest', False, None, None, None, self.subject_id, stopped='Space')
-                        core.quit()
-                    start_state = self.moves_to_states([key], start_state)[0][1]
-                    self.circle.pos = training_move_positions[key]
-                    self.circle.draw()
-                    for n, i in enumerate(moves_to_enter):
-                        training_arrows[n].draw()
+
+                    # If a key is pressed, work out which state and position was selected
+                    self.draw_state_selection_grid(selected=pos_selected, test=self.testing_mode)
+                    self.win.flip()
+
+                    raw_keys = event.waitKeys(timeStamped=self.clock, keyList=self.valid_moves + ['escape', 'esc'])
+
+                    if len(raw_keys) and len(moves) < 3:
+
+                        key, rt = raw_keys[0]
+
+                        if key in ['escape', 'esc']:
+                            # self.save_json(trial + 1, 0, 'Rest', False, None, None, None, self.subject_id,
+                            #                stopped='Space')
+                            core.quit()
+
+                        # get selected state
+                        phase = len(moves)
+                        try:
+                            phase = len(moves)
+                            selected_state = self.phase_key_state_mapping[phase][key]
+                            moves.append(selected_state)
+                            move_rts.append(rt)
+
+                            # get selected state position on grid
+                            pos = self.state_selection_dict[selected_state]
+                            pos_selected.append(pos)
+                            current_state = selected_state
+                        except:  # if the chosen key doesn't exist in the dictionary for this phase
+                            pass
 
                     # if not monitoring_saved['Training']:
                     #     monitoring_saved['Training'] = self.save_json(i + 1, self.n_training_trials, 'Outcome only',
                     #                                                   True, start_state, None, None, self.subject_id)
-                else:
-                    start_state = 0
 
-                self.display_image.draw()
 
+                # self.display_image.draw()
                 self.win.flip()
                 core.wait(1)
 
-                # quit if subject pressed scape
-                if key in ['escape', 'esc']:
-                    self.save_json(i + 1, 0, 'Rest', False, None, None, None, self.subject_id, stopped='Space')
-                    core.quit()
-
             core.wait(1)
-
 
     def __run_task(self, test=False, instructions=None, trial_info=None, show_instructions=True, show_intro=False):
 
@@ -466,20 +508,29 @@ class ReplayExperiment(object):
 
         """
 
+        self.send_trigger(0, False)
+
         # Clock
         self.clock = core.Clock()
 
         # Durations
-        self.start_duration = self.config['durations']['start_duration']
-        self.pre_move_duration = self.config['durations']['pre_move_duration']
-        self.move_entering_duration = self.config['durations']['move_entering_duration']
-        self.move_duration = self.config['durations']['move_durations']
-        self.move_period_duration = self.move_duration * self.n_moves
+        if test:
+            # Shorter planning and rest periods in test phase
+            self.start_duration = self.config[self.durations]['start_duration_test']
+            self.rest_duration = self.config[self.durations]['rest_duration_test']
+        else:
+            self.start_duration = self.config[self.durations]['start_duration']
+            self.rest_duration = self.config[self.durations]['rest_duration']
+        self.pre_move_duration = self.config[self.durations]['pre_move_duration']
+        # self.move_entering_duration = self.config[self.durations]['move_entering_duration']
+        self.pre_move_fixation_duration = self.config[self.durations]['pre_move_fixation_duration']
+        self.move_duration = self.config[self.durations]['move_durations']
+        self.move_period_duration = self.move_duration * (self.n_moves + 1)
 
         test_moves = np.repeat(['up', 'down', 'left', 'right'], 5)
 
         # Show instructions for the actual task (not shown if in testing mode)
-        if instructions is not None and not self.show_valid_moves and show_instructions:
+        if instructions is not None and not self.testing_mode and show_instructions:
             self.grand_instructions(instructions)
             self.win.flip()
 
@@ -509,22 +560,22 @@ class ReplayExperiment(object):
             n_trials = len(trial_info)
         else:
             n_trials = self.n_test_trials
-        print "NUMBER OF TRIALS", n_trials
 
         for i in range(n_trials):  # TRIAL LOOP - everything in here is repeated each trial
 
-            print "Trial {0} / {1}".format(i + 1, len(trial_info))
+            print "Trial {0} / {1}".format(i + 1, n_trials)
 
             # self.io.clearEvents('all')  # clear keyboard events
 
-            continue_trial = True  # this variables changes to False when we want to stop the trial
+            continue_trial = True  # this variable changes to False when we want to stop the trial
 
             change_times = list(np.cumsum([0, self.start_duration, self.pre_move_duration, self.move_entering_duration,
-                                           self.move_period_duration, self.config['durations']['rest_duration']]))
+                                           self.pre_move_fixation_duration, self.move_period_duration,
+                                           self.rest_duration]))
 
-            outcome_only_change_times = list(np.cumsum([0, self.config['durations']['outcome_only_text_duration'],
-                                                        self.config['durations']['outcome_only_duration'],
-                                                        self.config['durations']['rest_duration']]))
+            outcome_only_change_times = list(np.cumsum([0, self.config[self.durations]['outcome_only_text_duration'],
+                                                        self.config[self.durations]['outcome_only_duration'],
+                                                        self.config[self.durations]['rest_duration']]))
 
             # Track which monitoring data we've saved
             monitoring_saved = {'Planning': False, 'Moves': False, 'Rest': False, 'Outcome': False, 'Pause': False}
@@ -533,12 +584,12 @@ class ReplayExperiment(object):
             start_state = 0
             self.display_image.setImage(self.stimuli[start_state])
             states = None
+            self.outcome_text.text = ''
 
             # End state on test trials
             if test:
                 end_state = trial_info['end_state'][i]
                 self.display_image_test.setImage(self.stimuli[end_state])
-
 
             # If running the test phase, we want all outcome states except the correct one to say "incorrect"
             if test:
@@ -552,27 +603,34 @@ class ReplayExperiment(object):
                 outcome = [''] * (self.matrix.shape[0] - (self.reward_info.shape[1] - 1))
                 outcome += self.reward_info[[c for c in self.reward_info.columns if 'reward' in c]].iloc[i, :].tolist()
                 shock_outcome = [0] * (self.matrix.shape[0] - (self.shock_info.shape[1] - 1))
-                shock_outcome += self.shock_info[[c for c in self.shock_info.columns if 'shock' in c]].iloc[i, :].tolist()
+                shock_outcome += self.shock_info[[c for c in self.shock_info.columns if 'shock' in c]].iloc[i,
+                                 :].tolist()
                 # shock_outcome = [1] * self.matrix.shape[0]
 
             # Default values for responses in case the subject makes no response
-            rt = None
-            key = None
-            trial_moves = []
             move_rts = []
             moves_found = False
             moves_to_enter = []
             valid_moves = False
+            moves_validated = False
             self.shocks_given = 0
-            progress_arrows_set = False
+
+            # Generated moves for incorrect trials
+            generated_moves = None
+
+            # Setup selection grid
+            self.setup_state_selection_grid(random_positions=True, test=self.testing_mode)
+            moves = []
+            moves_states = []
+            pos_selected = []  # image positions that have been selected - these are faded out on the grid
 
             # Identifies and shows valid trajectories - used for testing
-            if self.show_valid_moves:
+            if self.testing_mode:
                 if not test:
                     end_state = np.random.randint(7, 11)
                 while not moves_found:
                     random.shuffle(test_moves)
-                    moves_to_enter = self.test_moves(start_state, end_state)
+                    moves_to_enter, _ = self.test_moves(start_state, end_state)
                     if moves_to_enter is not False:
                         moves_found = True
             else:
@@ -585,12 +643,28 @@ class ReplayExperiment(object):
             self.display_image.setPos((0, 0))
 
             # Outcome only trials outcome state
-            if trial_info['trial_type'][i] == 1:
-                outcome_state = trial_info['end_state'][i]
+            outcome_state = trial_info['end_state'][i]
+
+            # Trigger dict - lets us know whether we've sent triggers yet
+            self.trigger_dict = {'Planning': False, 'Move_entering': False, 'State_0': False, 'State_1': False,
+                            'State_2': False,
+                            'State_3': False, 'Shock': False, 'Rest': False, 'Outcome_only_warning': False,
+                            'Outcome_only_outcome': False}
+
+
+            if not i % self.trials_per_block and self.MEG_mode:
+                if i == 0:
+                    self.grand_instructions(["We are about to start the experiment"])
+                else:
+                    self.grand_instructions(["Take a break"])
+                self.grand_instructions(["We are about to start a new block, please keep as "
+                                         "still as possible for the duration of the block"])
 
             self.clock.reset()
 
+
             while continue_trial:  # run the trial
+
                 start = time.time()
                 t = self.clock.getTime()  # get the time
 
@@ -603,17 +677,39 @@ class ReplayExperiment(object):
                         text = "Outcome only"
                         self.instructions(text, max_wait=0)
 
-                        if not monitoring_saved['Outcome']:
-                            monitoring_saved['Outcome'] = self.save_json(i+1, len(trial_info), 'Outcome', True, [int(outcome_state)],
+                        self.send_trigger(80, self.trigger_dict['Outcome_only_warning'])
+                        self.trigger_dict['Outcome_only_warning'] = True
+
+                        if not monitoring_saved['Outcome'] and self.monitoring:
+                            monitoring_saved['Outcome'] = self.save_json(i + 1, len(trial_info), 'Outcome', True,
+                                                                         [int(outcome_state)],
                                                                          outcome, shock_outcome, self.subject_id)
+
+                        if self.MEG_mode:
+                            if t < 0.5:
+                                self.photodiode_square.fillColor = 'white'
+                                self.photodiode_square.draw()
+                            else:
+                                self.photodiode_square.fillColor = 'black'
 
                     # Show outcome
                     elif outcome_only_change_times[1] <= t < outcome_only_change_times[2]:
                         outcome_only = outcome[outcome_state]
                         shock_only = shock_outcome[outcome_state]
                         self.show_move(outcome_only, shock_only, self.stimuli[outcome_state], t,
-                                       outcome_only_change_times[1] + self.config['durations']['outcome_only_duration'] / 2.,
+                                       outcome_only_change_times[1] + self.config[self.durations][
+                                           'outcome_only_duration'] / 2.,
                                        show_moves=False, shock_delay=self.shock_delay)
+
+                        self.send_trigger(40, self.trigger_dict['Outcome_only_outcome'])
+                        self.trigger_dict['Outcome_only_outcome'] = True
+
+                        if self.MEG_mode:
+                            if change_times[1] < t < change_times[1] + 0.5:
+                                self.photodiode_square.fillColor = 'white'
+                                self.photodiode_square.draw()
+                            else:
+                                self.photodiode_square.fillColor = 'black'
 
                     # End trial
                     elif outcome_only_change_times[2] <= t < outcome_only_change_times[3]:
@@ -624,18 +720,27 @@ class ReplayExperiment(object):
                         continue_trial = False
 
                 else:
-
                     # Show start state
                     if change_times[0] <= t < change_times[1]:
                         if test:
                             self.show_start_end_move()
                         else:
                             self.display_image.draw()
+                        if not monitoring_saved['Planning'] and self.monitoring:
+                            monitoring_saved['Planning'] = self.save_json(i + 1, len(trial_info), 'Planning', None,
+                                                                          None,
+                                                                          outcome, shock_outcome, self.subject_id)
 
-                        if not monitoring_saved['Planning']:
-                            monitoring_saved['Planning'] = self.save_json(i+1, len(trial_info), 'Planning', None, None,
-                                                                         outcome, shock_outcome, self.subject_id)
-                                                      
+                        self.send_trigger(60, self.trigger_dict['Planning'])
+                        self.trigger_dict['Planning'] = True
+
+                        if self.MEG_mode:
+                            if change_times[0] < t < change_times[0] + 0.5:
+                                self.photodiode_square.fillColor = 'white'
+                                self.photodiode_square.draw()
+                            else:
+                                self.photodiode_square.fillColor = 'black'
+
                     # Move entering warning
                     elif change_times[1] <= t < change_times[2]:
                         self.main_text.text = key_text
@@ -643,86 +748,142 @@ class ReplayExperiment(object):
                         event.clearEvents()
                         self.display_image.setPos((0, 0))
 
+                        self.send_trigger(100, self.trigger_dict['Move_entering'])
+                        self.trigger_dict['Move_entering'] = True
+
+                        if self.MEG_mode:
+                            if change_times[1] < t < change_times[1] + 0.5:
+                                self.photodiode_square.fillColor = 'white'
+                                self.photodiode_square.draw()
+                            else:
+                                self.photodiode_square.fillColor = 'black'
+
                     # Move entering period
                     elif change_times[2] <= t < change_times[3]:
 
-                        raw_keys = event.getKeys(keyList=['left', 'right', 'up', 'down'], timeStamped=self.clock)
+                        # Draw state selection grid
+                        self.draw_state_selection_grid(selected=pos_selected, test=self.testing_mode)
 
-                        if len(raw_keys):
+                        # Watch for key presses
+                        # raw_keys = event.getKeys(keyList=self.response_keys, timeStamped=self.clock)
+                        raw_keys = event.getKeys(timeStamped=self.clock)
+
+                        # If a key is pressed, work out which state and position was selected
+                        if len(raw_keys) and len(moves) < 3:
+
                             key, rt = raw_keys[0]
 
-                        if key is not None and len(trial_moves) < self.n_moves:
-                            self.arrow_display.image = self.arrow_images[key]
+                            # get selected state
+                            phase = len(moves)
 
-                            trial_moves.append(key)
-                            move_rts.append(rt)
-                            key = None
+                            try:
+                                selected_state = self.phase_key_state_mapping[phase][key]
+                                moves.append(selected_state)
+                                move_rts.append(rt)
 
-                        if len(trial_moves) > 0:
-                            if t < rt + 0.2:
-                                self.arrow_display.draw()
+                                # get selected state position on grid
+                                pos = self.state_selection_dict[selected_state]
+                                pos_selected.append(pos)
 
-                    # Show moves
-                    
-                    elif change_times[3] <= t < change_times[4]:
-                        if states is None:
-                            moves_states = self.moves_to_states(trial_moves, start_state)
-                            # loop through their moves (trial_moves)
-                        if not progress_arrows_set: 
-                            for n, key in enumerate(trial_moves):
-                                self.arrow_progress[n].image = self.arrow_images[key]
-                            progress_arrows_set = True
-                        # Wrong moves or too few moves
-                        if moves_states is False:
-                            self.main_text.text = "Wrong moves entered"
-                            self.main_text.draw()
-                        elif len(trial_moves) < self.n_moves:
-                            moves_states = False
-                            self.main_text.text = "Too few moves entered"
-                            self.main_text.draw()
-                        
-                        else:
-                            valid_moves = True
-                            for n, (move, state) in enumerate(moves_states):
-                                if change_times[3] + n * self.move_duration <= t < change_times[3] + (n + 1) * self.move_duration:
-                                    self.show_move(outcome[state], shock_outcome[state], self.stimuli[state], t,
-                                                   change_times[3] + n * self.move_duration + self.move_duration / 2.)
-                                    self.circle.pos = (self.arrow_positions[n], self.circle.pos[1])
-                                    self.circle.draw()
+                            except:  # if the chosen key doesn't exist in the dictionary for this phase
+                                pass
 
-                                    if n == self.n_moves - 1 and not test:
-                                        self.reward_value += float(outcome[state])  # add reward to total
-
-                        
-                        if not monitoring_saved['Moves']:
-                            if moves_states:
-                                monitoring_saved['Moves'] = self.save_json(i+1, len(trial_info), 'Moves', valid_moves,
-                                                                        [l[1] for l in moves_states], outcome,
-                                                                        shock_outcome, self.subject_id)
+                        if self.MEG_mode:
+                            if change_times[2] < t < change_times[2] + 0.5:
+                                self.photodiode_square.fillColor = 'white'
+                                self.photodiode_square.draw()
                             else:
-                                monitoring_saved['Moves'] = self.save_json(i+1, len(trial_info), 'Moves', valid_moves,
-                                                                        None, outcome,
-                                                                        shock_outcome, self.subject_id)
-                         
-                    # Rest period
-                    elif change_times[4] <= t < change_times[5]:
+                                self.photodiode_square.fillColor = 'black'
+
+                    elif change_times[3] <= t < change_times[4]:  # Fixation before moves are shown
+
                         self.fixation.draw()
 
-                        if not monitoring_saved['Rest']:
-                            if moves_states:
-                                monitoring_saved['Rest'] = self.save_json(i+1, len(trial_info), 'Rest', valid_moves,
-                                                                        [l[1] for l in moves_states], outcome,
-                                                                        shock_outcome, self.subject_id)
+                    # Show moves
+
+                    elif change_times[4] <= t < change_times[5]:
+
+                        # Validate moves
+                        if not moves_validated:
+                            valid_moves = self.validate_moves([0] + moves)
+
+                        # Show generated moves and warning if too few moves entered
+                        if len(moves) < self.n_moves:
+
+                            if test:
+                                self.main_text.text = "Too few moves entered"
+                                self.main_text.draw()
+
                             else:
-                                monitoring_saved['Rest'] = self.save_json(i+1, len(trial_info), 'Rest', valid_moves,
-                                                                        None, outcome,
-                                                                        shock_outcome, self.subject_id)
+                                if generated_moves is None:
+                                    self.outcome_text.text = "Too few moves entered"
+                                    self.outcome_text.draw()
+                                    _, generated_moves = self.test_moves(0, outcome_state)
+
+                                self.show_move_sequence(generated_moves, change_times[4], change_times[5], t, outcome,
+                                                        shock_outcome, test)
+
+                        # Show generated moves and warning if wrong moves entered
+                        elif not valid_moves:
+
+                            if test:
+                                self.main_text.text = "Wrong moves entered"
+                                self.main_text.draw()
+
+                            else:
+                                if generated_moves is None:
+                                    self.outcome_text.text = "Wrong moves entered"
+                                    self.outcome_text.draw()
+                                    _, generated_moves = self.test_moves(0, outcome_state)
+
+                                self.show_move_sequence(generated_moves, change_times[4], change_times[5], t, outcome,
+                                                        shock_outcome, test)
+
+                        # Show entered moves
+                        else:
+                            self.show_move_sequence(moves, change_times[4], change_times[5], t,
+                                                    outcome, shock_outcome, test)
+
+                        # Monitor
+                        if not monitoring_saved['Moves'] and self.monitoring:
+                            if moves_states:
+                                monitoring_saved['Moves'] = self.save_json(i + 1, len(trial_info), 'Moves', valid_moves,
+                                                                           [l[1] for l in moves_states], outcome,
+                                                                           shock_outcome, self.subject_id)
+                            else:
+                                monitoring_saved['Moves'] = self.save_json(i + 1, len(trial_info), 'Moves', valid_moves,
+                                                                           None, outcome,
+                                                                           shock_outcome, self.subject_id)
+
+                    # Rest period
+                    elif change_times[5] <= t < change_times[6]:
+                        self.fixation.draw()
+
+                        if not monitoring_saved['Rest'] and self.monitoring:
+                            if moves_states:
+                                monitoring_saved['Rest'] = self.save_json(i + 1, len(trial_info), 'Rest', valid_moves,
+                                                                          [l[1] for l in moves_states], outcome,
+                                                                          shock_outcome, self.subject_id)
+                            else:
+                                monitoring_saved['Rest'] = self.save_json(i + 1, len(trial_info), 'Rest', valid_moves,
+                                                                          None, outcome,
+                                                                          shock_outcome, self.subject_id)
+
+                        self.send_trigger(30, self.trigger_dict['Rest'])
+                        self.trigger_dict['Rest'] = True
+
+                        if self.MEG_mode:
+                            if change_times[4] < t < change_times[4] + 0.5:
+                                self.photodiode_square.fillColor = 'white'
+                                self.photodiode_square.draw()
+                            else:
+                                self.photodiode_square.fillColor = 'black'
 
                     # End trial
                     elif t >= change_times[-1]:
 
                         continue_trial = False
-                
+
                 # flip to draw everything
                 self.win.flip()
 
@@ -732,56 +893,64 @@ class ReplayExperiment(object):
                     self.response_data['trial_number'] = i
                     self.response_data['Subject'] = self.subject_id
 
+                    # Reduce move entering duration
+                    if test and self.move_entering_duration > self.config[self.durations]['move_entering_duration']:
+                        self.move_entering_duration -= self.move_entering_duration_step
+
                     if trial_info['trial_type'][i] == 1:
                         for n in range(0, 3):
-                            self.response_data['Move_{0}'.format(n + 1)] = np.nan
                             self.response_data['State_{0}'.format(n + 1)] = np.nan
                             self.response_data['RT_{0}'.format(n + 1)] = np.nan
-                        self.response_data['Reward'] = outcome_only
-                        self.response_data['Shock'] = shock_only
-                    elif moves_states is not False:
-                        for n, (move, state) in enumerate(moves_states):
-                            self.response_data['Move_{0}'.format(n + 1)] = move
+                        self.response_data['Reward_received'] = outcome_only
+                        self.response_data['Shock_received'] = shock_only
+                    else:
+                        for n, state in enumerate(moves):
                             self.response_data['State_{0}'.format(n + 1)] = state
                             self.response_data['RT_{0}'.format(n + 1)] = move_rts[n]
-                        self.response_data['Reward'] = outcome[state]
-                        self.response_data['Shock'] = shock_outcome[state]
+                        if len(moves) == self.n_moves:
+                            self.response_data['Reward_received'] = outcome[state]
+                            self.response_data['Shock_received'] = shock_outcome[state]
+                        else:
+                            self.response_data['Reward_received'] = np.nan
+                            self.response_data['Shock_received'] = np.nan
                     self.response_data['trial_type'] = trial_info['trial_type'][i]
+                    for i in range(4):
+                        self.response_data['State_{0}_reward'.format(i + 1)] = outcome[i + 7]
+                        self.response_data['State_{0}_shock'.format(i + 1)] = shock_outcome[i + 7]
 
                     if not test:
                         csvWriter([self.response_data[category] for category in self.data_keys])  # Write data
                     else:
                         # In the test phase, figure out whether they got to the correct state
-                        if moves_states is not False:
-                            print moves_states[-1][1], end_state
-                        if moves_states is not False and moves_states[-1][1] == end_state:
+                        if len(moves) > 0 and moves[-1] == end_state:
                             n_successes += 1
                         else:
                             n_successes = 0
-                        
+
+                        print "Number of successes = {0}".format(n_successes)
+
                         # In the test phase, break when subject gets enough trials correct
                         if test and n_successes == self.config['number training trials']['n_test_successes']:
                             return True
-
-                        print n_successes
 
                 if event.getKeys(["space", ' ']):
                     self.instruction_text.setText("Experiment paused")
                     self.instruction_text.draw()
                     self.win.flip()
-                    if not monitoring_saved['Pause']:
+                    if not monitoring_saved['Pause'] and self.monitoring:
                         monitoring_saved['Pause'] = self.save_json(i + 1, len(trial_info), 'Pause', valid_moves,
-                                                                  None, None, None, self.subject_id, stopped='Space')
-                    event.waitKeys(['space', ' '])
+                                                                   None, None, None, self.subject_id, stopped='Space')
+                    event.waitKeys(['space', ' ', '1'])
 
                 # quit if subject pressed scape
-                if event.getKeys(["escape"]):
-                    self.save_json(i + 1, len(trial_info), 'Escape', valid_moves, None, None, None, self.subject_id,
-                                   stopped='Escape')
+                if event.getKeys(["escape", "esc"]):
+                    # if self.monitoring:
+                    #     self.save_json(i + 1, len(trial_info), 'Escape', valid_moves, None, None, None, self.subject_id,
+                    #                    stopped='Escape')
                     core.quit()
 
-        return False
 
+        return False
 
     def load_instructions(self, text_file):
 
@@ -799,32 +968,6 @@ class ReplayExperiment(object):
             instructions = f.read()
 
         return instructions.split('*')
-
-    def create_arrows(self, n):
-
-        """
-        Creates a list of arrow stimuli representing moves the subject has made. Arrow directions are not determined at
-        this point - this is just a correctly positioned list of arrow stimuli to be given images later.
-
-        Args:
-            n: number of arrows to show
-
-        Returns:
-            Positions of the arrows
-            Arrow stimuli in correct positions
-
-        """
-
-        arrow_positions = np.arange(-np.abs(((n - 1) * self.arrow_gap) / 2.),
-                                         np.abs(((n - 1) * self.arrow_gap) / 2.) + 0.1, self.arrow_gap)
-
-        arrow_progress = []
-        # loop through range(number of moves)
-
-        for i in range(n):
-            arrow_progress.append(visual.ImageStim(win=self.win, size=(1.5, 2), pos=(arrow_positions[i], -8)))
-
-        return arrow_positions, arrow_progress
 
     def get_responses(self, response_event, response_keys, start_time=0, mapping=None):
         """
@@ -864,7 +1007,7 @@ class ReplayExperiment(object):
 
         return shocks_given
 
-    def show_move(self, outcome, shock, picture, t, shock_time, show_moves=True, shock_delay=0.5):
+    def show_move(self, outcome, shock, picture, t, shock_time, show_moves=True, shock_delay=0.8):
 
         """
         Shows the image and (potentially) outcome associated with a state
@@ -885,22 +1028,50 @@ class ReplayExperiment(object):
         if self.display_image.image != picture:
             self.display_image.image = picture
 
+
         # set outcome text either as value or shock
-        #self.outcome_image.image = outcome
+        # self.outcome_image.image = outcome
         if t <= shock_time:
-            self.outcome_text.text = outcome
+            if outcome:
+                self.outcome_text.text = outcome
             self.outcome_text.draw()
         elif t > shock_time + shock_delay and shock == 1:
+            # self.send_trigger(self.parallel_port, 60, self.trigger_dict['Shock'])
+            # self.trigger_dict['Shock'] = True
             self.outcome_image.draw()
             self.shocks_given = self.send_shocks(self.shocks_given, n_shocks=self.n_shocks)
         elif t > shock_time and shock == 1:
             self.outcome_image.draw()
 
-        if show_moves:
-            for i in range(self.n_moves):
-                self.arrow_progress[i].draw()
         # draw everything
         self.display_image.draw()
+
+
+    def show_move_sequence(self, moves, start_time, end_time, t, outcome, shock_outcome, test, add_reward=True):
+
+        if not moves[0] == 0:
+            moves = [0] + moves
+
+        for n, state in enumerate(moves):
+
+            if start_time + n * self.move_duration <= t < end_time + (n + 1) * self.move_duration:
+
+                self.show_move(outcome[state], shock_outcome[state], self.stimuli[state], t,
+                               start_time + n * self.move_duration + self.move_duration / 2.)
+
+                if n == self.n_moves and not test:
+                    self.reward_value += float(outcome[state])  # add reward to total
+
+                self.send_trigger((state + 1) * 2, self.trigger_dict['State_{0}'.format(n)])
+                self.trigger_dict['State_{0}'.format(n)] = True
+
+                if self.MEG_mode:
+                    if start_time + n * self.move_duration < t < start_time + 0.5:
+                        self.photodiode_square.fillColor = 'white'
+                        self.photodiode_square.draw()
+                    else:
+                        self.photodiode_square.fillColor = 'black'
+
 
     def instructions(self, text, max_wait=2):
 
@@ -922,7 +1093,7 @@ class ReplayExperiment(object):
         if max_wait > 0:
             self.win.flip()
         # waitkeys
-        event.waitKeys(maxWait=max_wait, keyList='space')
+        event.waitKeys(maxWait=max_wait, keyList=['space', '1'])
 
     def grand_instructions(self, text_file):
 
@@ -944,7 +1115,7 @@ class ReplayExperiment(object):
             self.instruction_text.draw()
             self.win.flip()
             core.wait(1)
-            key = event.waitKeys(keyList=['space', 'escape', 'esc'])
+            key = event.waitKeys(keyList=['space', 'escape', 'esc', '1'])
             if key[0] in ['escape', 'esc']:
                 core.quit()
 
@@ -959,7 +1130,6 @@ class ReplayExperiment(object):
 
         matrix = np.loadtxt(self.config['directories']['matrix'])
 
-
         matrix_keys = matrix.astype(int).astype(str)
         keys = ['up', 'down', 'left', 'right']
         random.shuffle(keys)
@@ -973,7 +1143,6 @@ class ReplayExperiment(object):
         G = nx.DiGraph(matrix)
 
         return matrix, matrix_keys, G
-
 
     def moves_to_states(self, trial_moves, start):
 
@@ -1008,7 +1177,7 @@ class ReplayExperiment(object):
 
         return moves_states
 
-    def test_moves(self, start, end=None):
+    def test_moves(self, start, end=None, return_keys=True):
 
         """
         For a given start and end state, works out a series of allowable moves. If end is None, returns all possible moves
@@ -1023,21 +1192,18 @@ class ReplayExperiment(object):
 
         """
 
-        moves_states = []
-
         if end is not None:
-            path = nx.shortest_path(self.matrix_asgraph, start, end)
-
-            for n, i in enumerate(path[:-1]):
-                moves_states.append(self.matrix_keys[i, path[n + 1]])
+            states = nx.shortest_path(self.matrix_asgraph, start, end)
 
         else:
-            neighbours = self.matrix_asgraph.neighbors(start)
-            for i in neighbours:
-                moves_states.append(self.matrix_keys[start, i])
+            states = [i for i in self.matrix_asgraph.neighbors(start)]
 
-        return moves_states
+        if end is None:  # task - we don't need the first state
+            moves = [self.state_selection_keys[i] for i in states]
+        else:  # training, we do
+            moves = [self.state_selection_keys[i] for i in states[1:]]
 
+        return moves, states
 
     def show_start_end_move(self):
 
@@ -1054,7 +1220,7 @@ class ReplayExperiment(object):
     def save_json(self, trial_number, total_trials, phase, valid_moves, moves, reward, shock, subject, stopped="None"):
 
         json_data = {"Trial": trial_number, "Total_trials": total_trials, "Stopped": stopped, "Phase": phase,
-                     "Valid": valid_moves, "Moves": moves, "Reward": reward, "Shock": shock,  "Subject": subject}
+                     "Valid": valid_moves, "Moves": moves, "Reward": reward, "Shock": shock, "Subject": subject}
 
         try:
             with open('//cher/twise/web/replay_task_output_json.txt', 'w') as f:
@@ -1069,6 +1235,107 @@ class ReplayExperiment(object):
 
         return reward_data.max(axis=1).sum()
 
+    def setup_state_selection_grid(self, random_positions=True, valid=False, selected=(), test=False, training=True,
+                                   initial_state=None):
+
+        """
+        Assign state images to the imagestim instances that make up the 3 x 3 state selection grid
+
+        """
+
+        # Shuffle imagestim/number order so images are randomly assigned to positions on the grid
+
+        if random_positions:
+            random.shuffle(self.state_selection_images)
+
+        # Create a dictionary that looks like {state id: grid id}
+        self.state_selection_dict = {}
+
+        # Assign keys for each state
+        self.state_selection_keys, self.phase_key_state_mapping = self.assign_response_keys()
+
+        # Make invalid images smaller
+        if valid:
+            if initial_state is None:
+                valid_moves, valid_states = self.test_moves(0)
+            else:
+                valid_moves, valid_states = self.test_moves(initial_state)
+            self.valid_moves = valid_moves
+            invalid_size = [i / 2. for i in self.config['image sizes']['size_selection_image']]
+
+        for n, i in enumerate(self.stimuli[1:]):
+            self.state_selection_images[n][1].image = i
+            self.state_selection_images[n][2].text = self.state_selection_keys[n + 1]
+            if valid and n + 1 not in valid_states:
+                self.state_selection_images[n][1].size = invalid_size
+            else:
+                self.state_selection_images[n][1].size = self.config['image sizes']['size_selection_image']
+            self.state_selection_dict[n + 1] = self.state_selection_images[n][0]
+
+    def draw_state_selection_grid(self, selected=(), test=False):
+
+        for n, i, j in self.state_selection_images:
+            if n in selected:
+                i.opacity = 0.3
+            else:
+                i.opacity = 1
+            i.draw()
+            j.draw()
+
+    def validate_moves(self, moves):
+
+        for n in range(len(moves) - 1):
+
+            if not self.matrix[moves[n], moves[n + 1]] == 1:
+                return False
+
+        return True
+
+    def assign_response_keys(self):
+
+        # Assign keys to each state option - must have distinct keys for each option at each level
+        shuffled_response_keys = copy.copy(self.response_keys)
+
+        state_keys = {}  # maps states to keys, used for labelling
+        phase_key_state_mapping = {}  # maps phases (levels of the tree) and keys to states
+
+        prev_phase = -1
+        prev_n = 0
+
+        for i in range(self.matrix.shape[0]):
+
+            next_states = np.where(self.matrix[i, :])[0]
+
+            for n, j in enumerate(next_states):
+
+                phase = self.response_phases[j - 1]
+                if phase != prev_phase:
+                    random.shuffle(shuffled_response_keys)
+                    prev_n = 0
+
+                state_keys[j] = shuffled_response_keys[n + prev_n]
+
+                if not phase in phase_key_state_mapping:
+                    phase_key_state_mapping[phase] = {}
+                phase_key_state_mapping[phase][shuffled_response_keys[n + prev_n]] = j
+
+                prev_phase = phase
+            prev_n += n + 1
+
+        return state_keys, phase_key_state_mapping
+
+
+    def send_trigger(self, data, set):
+
+        if not set:
+            self.win.callOnFlip(self.parallel_port.setData, data)
+        else:
+            self.win.callOnFlip(self.parallel_port.setData, 0)
+
+
+def trigger(port, data):
+
+    port.setData(data)
 
 ## RUN THE EXPERIMENT
 

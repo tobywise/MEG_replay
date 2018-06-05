@@ -1,9 +1,13 @@
 You will first be guided through a training phase.
 
-*In the training, you will be able to move through the pictures but you will not see or receive any rewards. With each picture shown, you will also be shown all the possible moves you can make. Your job is to move through the pictures using these displayed possible moves.
+*In the training, you will be able to move through the pictures but you will not see or receive any rewards.
+
+You will first be shown the image you are current at, and then be shown the possible images you can move to next. You will see a grid of images, but you will only be able to choose the big images.
+
+You can select an image by pressing the number that is presented on top of the image.
 
 *The goal of the training is to become familiar with the pictures before beginning the task.
 
-*The training will last about 10 minutes, and you will navigate using the arrow keys. The possible moves will be displayed on the screen as arrows, and these arrows correspond to the arrows on the arrow keys. To begin, press the spacebar. If you have a question or want to stop, press the spacebar to pause.
+*The training will last about 5 minutes, and you will navigate using the arrow keys. The possible moves will be displayed on the screen as arrows, and these arrows correspond to the arrows on the arrow keys.
 
-*If you don't have any questions, press the spacebar to begin.
+*If you don't have any questions, press 1 to begin.
