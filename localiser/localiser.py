@@ -36,6 +36,7 @@ class Localiser(object):
         with open(config) as f:
             self.config = yaml.load(f)
 
+
         # ------------------------------------#
         # Subject/task information and saving #
         # ------------------------------------#
@@ -45,17 +46,17 @@ class Localiser(object):
         dialogue.addText("Subject info")
         dialogue.addField('Subject ID')
         dialogue.addText("Task info")
+        dialogue.addField('Order', choices=[0, 1])
         dialogue.addField('Parallel port testing', initial=False)
         dialogue.show()
 
         # check that values are OK and assign them to variables
         if dialogue.OK:
             self.subject_id = dialogue.data[0]
-            self._parallel_port = dialogue.data[1]
+            self.order = dialogue.data[1]
+            self._parallel_port = dialogue.data[2]
         else:
             core.quit()
-
-        random.seed(re.search('\d+', self.subject_id).group())  # all randomness will be the same every time the subject does the task
 
         monitor = monitors.Monitor('test2', width=40.92, distance=74)
         monitor.setSizePix((1024, 768))
@@ -81,7 +82,6 @@ class Localiser(object):
         self.data_keys = ['True_answer', 'Response']
         self.save_folder = self.config['directories']['saved_data']
         self.save_prefix = self.config['filenames']['save_prefix']
-
 
     def run_localiser(self, variant=None):
 
@@ -128,7 +128,7 @@ class Localiser(object):
                 self.main_text.text = self.image.image.split('\\')[-1].split('.')[0].lower()
                 self.main_text.draw()
 
-                self.win.callOnFlip(self.parallel_port.setData, 50)  # TEXT
+                self.win.callOnFlip(self.parallel_port.setData, 20)
                 self.win.flip()
                 self.parallel_port.setData(0)
 
@@ -140,10 +140,10 @@ class Localiser(object):
 
             if not null:
                 self.image.draw()
-                self.win.callOnFlip(self.parallel_port.setData, (image_idx + 1) * 2)
+                self.win.callOnFlip(self.parallel_port.setData, image_idx)
             else:
                 self.fixation.draw()
-                self.win.callOnFlip(self.parallel_port.setData, 99)  # NULL TRIAL
+                self.win.callOnFlip(self.parallel_port.setData, 99)
             fliptime = self.win.flip()
             self.parallel_port.setData(0)
 
@@ -165,7 +165,7 @@ class Localiser(object):
             print "Number correct = {0}".format(self.n_correct)
 
             self.fixation.draw()
-            self.win.callOnFlip(self.parallel_port.setData, 70)  # FIXATION CROSS
+            self.win.callOnFlip(self.parallel_port.setData, 30)
             self.win.flip()
             self.parallel_port.setData(0)
             fix_duration = self.config['durations']['fixation_duration'] + \
@@ -193,9 +193,7 @@ class Localiser(object):
 
     def run_task(self):
 
-        self.instructions("Welcome to the task\n\n"
-                          "You will see a series of images, some of which will be slightly faded (transparent)\n\n"
-                          "Your task is to identify these faded images by pressing the left button", fixation=False)
+        self.instructions("Welcome to the task", fixation=False)
         self.instructions("We are about to begin, please keep your head still until the next break")
 
         n_runs = [4, 5]
@@ -206,9 +204,7 @@ class Localiser(object):
                         if ('.png' in i or '.jpg' in i or '.jpeg' in i) and 'shock' not in i][
                        :self.config['task_settings']['n_stimuli']]
 
-        random.shuffle(self.stimuli)  # make sure stimuli are randomly assigned to states
-
-        self.order = 0
+        self.order = int(self.order)               
 
         for i in range(n_runs[self.order]):
 
@@ -218,6 +214,26 @@ class Localiser(object):
             self.instructions("Take a break", fixation=False)
             self.instructions("We are about to begin, please keep your head still until the next break")
 
+
+        self.stimuli = [os.path.join(stimuli_location, i) for i in os.listdir(stimuli_location)
+                        if ('.png' in i or '.jpg' in i or '.jpeg' in i) and 'shock' not in i][
+                       self.config['task_settings']['n_stimuli']:self.config['task_settings']['n_stimuli'] * 2]
+
+        self.instructions("The images you see in the next block will be different from those in the previous block")
+
+        for i in range(n_runs[1 - self.order]):
+
+            print "Block {0} of {1}, {2} variant".format(i + 1, n_runs[1 - self.order], self.variants[1 - self.order])
+
+            self.run_localiser(self.variants[1 - self.order])
+
+            if i < n_runs[1 - self.order] - 1:
+                self.instructions("Take a break", fixation=False)
+                self.instructions("We are about to begin, please keep your head still until the next break")
+
+        self.instructions("End of task, thank you for participating!\n\n"
+                          "You collected {0} points out of a possible {1}".format(self.n_correct,
+                                                                                  self.possible_correct, fixation=False))
 
 localiser = Localiser('localiser_config.yaml')
 localiser.run_task()
