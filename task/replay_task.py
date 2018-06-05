@@ -14,7 +14,6 @@ import time
 import copy
 import re
 
-# TODO gradually reduce start time in test phase
 
 class ParallelPort(object):
 
@@ -564,8 +563,6 @@ class ReplayExperiment(object):
 
         for i in range(n_trials):  # TRIAL LOOP - everything in here is repeated each trial
 
-            print self.move_entering_duration
-
             print "Trial {0} / {1}".format(i + 1, n_trials)
 
             # self.io.clearEvents('all')  # clear keyboard events
@@ -787,6 +784,7 @@ class ReplayExperiment(object):
                                 # get selected state position on grid
                                 pos = self.state_selection_dict[selected_state]
                                 pos_selected.append(pos)
+
                             except:  # if the chosen key doesn't exist in the dictionary for this phase
                                 pass
 
@@ -829,7 +827,7 @@ class ReplayExperiment(object):
                         elif not valid_moves:
 
                             if test:
-                                self.main_text.text = "Too few moves entered"
+                                self.main_text.text = "Wrong moves entered"
                                 self.main_text.draw()
 
                             else:
@@ -856,7 +854,6 @@ class ReplayExperiment(object):
                                 monitoring_saved['Moves'] = self.save_json(i + 1, len(trial_info), 'Moves', valid_moves,
                                                                            None, outcome,
                                                                            shock_outcome, self.subject_id)
-
 
                     # Rest period
                     elif change_times[5] <= t < change_times[6]:
@@ -929,6 +926,8 @@ class ReplayExperiment(object):
                             n_successes += 1
                         else:
                             n_successes = 0
+
+                        print "Number of successes = {0}".format(n_successes)
 
                         # In the test phase, break when subject gets enough trials correct
                         if test and n_successes == self.config['number training trials']['n_test_successes']:

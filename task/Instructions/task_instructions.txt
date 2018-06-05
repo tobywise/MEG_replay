@@ -6,4 +6,4 @@ Now that you've become familiar with the pictures, we're going to begin the task
 
 *Remember, your goal is to find the picture with the highest reward value. This image will change frequently across trials.
 
-*If you don't have any questions, press the spacebar to begin.
+*If you don't have any questions, press 1 to begin.

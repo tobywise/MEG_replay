@@ -1,13 +1,7 @@
 Welcome!
 
-In this task you will be asked to move through a series of pictures. In each trial, you will be able to make three moves.
+In this task you will be asked to move through a series of pictures.
 
-After entering your movements, you will be shown the images you have just moved through. Upon display of the third and final image, you will see a monetary reward value. You will only see rewards associated with this third image.
+First, you will learn how to move through these pictures. After this, you will use this knowlegde to navigate towards pictures that give you a monetary reward.
 
-*Your goal is to find the image that has the highest reward value. Across trials, however, the image associated with the highest reward value will change frequently. This reward will be added to your total, and a new trial will begin.
-
-*During some trials, which will be labeled as "OUTCOME ONLY," you will not be able to make any moves, but you will be shown a picture and a reward value as if you made moves yourself.
-
-*Throughout the task, you will be given a shock upon encountering a certain image. This image will be associated with a shock for some trials, but across trials, the image associated with the shock will change frequently. In addition to this, each image has a small chance of randomly shocking you.
-
-*If you don't have any questions, press the spacebar to begin.
+If you don't have any questions, press 1 to begin.

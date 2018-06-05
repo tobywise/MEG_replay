@@ -8,4 +8,4 @@ It's important that you select images in the correct order.
 
 *After selecting a sequence of images you will be shown which pictures you have moved through. When the third image is displayed on the screen, you will be shown feedback to indicate whether you were successful in getting to the correct image. If you press a sequence of keys that isn't allowed, you will be told your moves were incorrect.
 
-*If you don't have any questions, press the spacebar to begin.
+*If you don't have any questions, press 1 to begin.
