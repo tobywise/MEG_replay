@@ -12,7 +12,7 @@ matplotlib.rcParams['font.family'] = prop.get_name()
 # VARIABLES
 
 n_trials = 100  # number of trials
-n_blocks = 4  # number of blocks (reversals)
+n_blocks = 2  # number of blocks (reversals)
 scale = 0.03  # mean step size of random walk
 sd = 0.05  # SD of step size
 diff = 0.04  # difference between random walks in the same tree branch
@@ -62,6 +62,7 @@ plt.tight_layout()
 if save:
     plt.savefig('Slides/random_walks.svg')
 
+
 # SHOCKS
 
 n_shocks_min = 3  # minimum number of consecutive shocks from one state
@@ -80,7 +81,9 @@ for i in shocks:
     shocked_state = [s for s in shock_outcomes.keys() if s!= prev_shocked_state][np.random.randint(0, len(shock_outcomes.keys()) - 1)]
     for s in shock_outcomes.keys():
         if s == shocked_state:
-            shock_outcomes[s] += np.ones(i).tolist()
+            shock_array = np.ones(i)
+            shock_array[np.random.randint(i)] = 0
+            shock_outcomes[s] += shock_array.tolist()
         else:
             outcomes = np.zeros(i)
             outcomes[:] = np.nan
@@ -92,7 +95,7 @@ for i in shocks:
 for k, v in shock_outcomes.iteritems():
     nans = np.where(np.isnan(shock_outcomes[k]))[0]
     np.random.shuffle(nans)
-    extra_shock_idx = nans[:int(len(nans) * .15)]
+    extra_shock_idx = nans[:int(len(nans) * .2)]
     shock_outcomes[k] = np.array(shock_outcomes[k])
     shock_outcomes[k][extra_shock_idx] = 1
 
@@ -101,8 +104,22 @@ for k, v in shock_outcomes.iteritems():
 reward_df = pd.DataFrame(values)
 reward_df.columns = ['0_reward', '1_reward', '2_reward', '3_reward']
 
+plt.figure()
+plt.title("Sum of rewards across end states")
+plt.bar(range(4), reward_df.sum().values.T)
+plt.xlabel("State")
+plt.ylabel("Reward sum")
+plt.xticks(range(4), range(4))
+
 shock_df = pd.DataFrame(shock_outcomes)
 shock_df.columns = ['0_shock', '1_shock', '2_shock', '3_shock']
+
+plt.figure()
+plt.title("Sum of shocks across end states")
+plt.bar(range(4), shock_df.sum().values.T)
+plt.xlabel("State")
+plt.ylabel("Reward sum")
+plt.xticks(range(4), range(4))
 
 trial_info = pd.concat([reward_df, shock_df], axis=1)
 trial_info['trial_number'] = range(0, len(trial_info))
@@ -161,5 +178,6 @@ for j in range(len(trial_info)):
 plt.tight_layout()
 
 if save:
-    plt.savefig('Slides/random_walks_shocks.svg')
+    plt.savefig('task/Task_information/task_info.svg')
+    plt.savefig('task/Task_information/task_info.pdf')
 
