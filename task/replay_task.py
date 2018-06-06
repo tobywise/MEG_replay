@@ -133,6 +133,11 @@ class ReplayExperiment(object):
         self.trials_per_block = self.config[self.durations]['trials_per_block']
 
         # Check for missing data
+        for c in self.trial_info.columns:
+            self.trial_info[c][self.trial_info[c].isnull()] = 0
+
+        print self.trial_info
+
         assert np.all(~self.trial_info.isnull())
         assert np.all(~self.trial_info_test.isnull())
         assert len(self.trial_info) > 0
@@ -438,7 +443,7 @@ class ReplayExperiment(object):
 
                 ## THIS IS WHERE THEY MAKE THE MOVE
                 self.win.flip()
-                core.wait(2)
+                core.wait(1.3)
 
                 if trial == 0:
                     self.setup_state_selection_grid(random_positions=True, valid=valid_states, test=self.testing_mode,
@@ -846,9 +851,9 @@ class ReplayExperiment(object):
 
                         # Monitor
                         if not monitoring_saved['Moves'] and self.monitoring:
-                            if moves_states:
+                            if moves:
                                 monitoring_saved['Moves'] = self.save_json(i + 1, len(trial_info), 'Moves', valid_moves,
-                                                                           [l[1] for l in moves_states], outcome,
+                                                                           moves, outcome,
                                                                            shock_outcome, self.subject_id)
                             else:
                                 monitoring_saved['Moves'] = self.save_json(i + 1, len(trial_info), 'Moves', valid_moves,
@@ -860,9 +865,9 @@ class ReplayExperiment(object):
                         self.fixation.draw()
 
                         if not monitoring_saved['Rest'] and self.monitoring:
-                            if moves_states:
+                            if moves:
                                 monitoring_saved['Rest'] = self.save_json(i + 1, len(trial_info), 'Rest', valid_moves,
-                                                                          [l[1] for l in moves_states], outcome,
+                                                                          moves, outcome,
                                                                           shock_outcome, self.subject_id)
                             else:
                                 monitoring_saved['Rest'] = self.save_json(i + 1, len(trial_info), 'Rest', valid_moves,
