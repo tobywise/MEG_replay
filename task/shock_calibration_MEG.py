@@ -75,8 +75,7 @@ while continue_calibration:
 
             key = event.getKeys(['esc', 'escape', 'q', '1', '2'])
             if len(key):
-
-                if key[0] == '1'and vas.getRating() >= vas.low + 111:
+                if key[0] == '1'and vas.getRating() >= vas.low + 1:
                     vas.setMarkerPos(vas.getRating() - 2)
                 elif key[0] =='2' and vas.getRating() <= vas.high - 1:
                     vas.setMarkerPos(vas.getRating())
