@@ -14,7 +14,7 @@ import time
 import copy
 import re
 
-# TODO grid order
+# TODO grid order - show 4 images per stage from which the subject can select a move
 
 class ParallelPort(object):
 
@@ -237,11 +237,9 @@ class ReplayExperiment(object):
 
         # State selection images
         self.state_selection_images = []  # list of tuples, (image id, imagestim)
-        # Create a 3x3 grid of images
 
-        for i in range(len(self.stimuli[1:])):
-            pos = (((i % 5) - 2) * self.config['image sizes']['state_selection_spacing'],
-                   (np.floor(i / 5) - 0.5) * self.config['image sizes']['state_selection_spacing'])
+        for i in range(4):
+            pos = (((i % 4) - 1.5) * self.config['image sizes']['state_selection_spacing'], 0)
             self.state_selection_images.append((i, visual.ImageStim(win=self.win,
                                                                     size=self.config['image sizes'][
                                                                         'size_selection_image'],
@@ -404,8 +402,6 @@ class ReplayExperiment(object):
 
         if show_intro:
             self.grand_instructions(["Starting training phase, press space to begin"])
-
-        states = None
 
         for trial in range(self.n_training_trials):
 
@@ -632,7 +628,12 @@ class ReplayExperiment(object):
             generated_moves = None
 
             # Setup selection grid
+            #self.setup_state_selection_grid(random_positions=True, test=self.testing_mode)
+            setup_check_grid = [True, False, False]
             self.setup_state_selection_grid(random_positions=True, test=self.testing_mode)
+            selected_state = 0
+            pos = 10
+
             moves = []
             moves_states = []
             pos_selected = []  # image positions that have been selected - these are faded out on the grid
@@ -701,7 +702,7 @@ class ReplayExperiment(object):
                         if self.MEG_mode:
                             if t < 0.5:
                                 self.photodiode_square.fillColor = 'white'
-                                self.photodiode_square.draw()
+                                # self.photodiode_square.draw()
                             else:
                                 self.photodiode_square.fillColor = 'black'
 
@@ -720,7 +721,7 @@ class ReplayExperiment(object):
                         if self.MEG_mode:
                             if change_times[1] < t < change_times[1] + 0.5:
                                 self.photodiode_square.fillColor = 'white'
-                                self.photodiode_square.draw()
+                                # self.photodiode_square.draw()
                             else:
                                 self.photodiode_square.fillColor = 'black'
 
@@ -774,8 +775,24 @@ class ReplayExperiment(object):
                     # Move entering period
                     elif change_times[2] <= t < change_times[3]:
 
+                        for n in range(3):
+                            if change_times[2] + n * self.move_entering_duration / 3. <= t < \
+                                    change_times[2] + (n + 1) * self.move_entering_duration / 3.:
+                                print n
+                                if not setup_check_grid[n]:
+                                    pos = 10
+                                    print n, "EEE", setup_check_grid[n]
+                                    self.setup_state_selection_grid(random_positions=True, test=self.testing_mode,
+                                                                    initial_state=selected_state, assign_keys=False)
+                                    setup_check_grid[n] = True
+                                # Draw state selection grid
+                                if selected_state > 0 or n == 0:  # only show if the previous move was made
+                                    print "B", selected_state
+                                    self.draw_state_selection_grid(selected=[pos], test=self.testing_mode)
+
+
                         # Draw state selection grid
-                        self.draw_state_selection_grid(selected=pos_selected, test=self.testing_mode)
+                        # self.draw_state_selection_grid(selected=pos_selected, test=self.testing_mode)
 
                         # Watch for key presses
                         # raw_keys = event.getKeys(keyList=self.response_keys, timeStamped=self.clock)
@@ -804,7 +821,7 @@ class ReplayExperiment(object):
                         if self.MEG_mode:
                             if change_times[2] < t < change_times[2] + 0.5:
                                 self.photodiode_square.fillColor = 'white'
-                                self.photodiode_square.draw()
+                                # self.photodiode_square.draw()
                             else:
                                 self.photodiode_square.fillColor = 'black'
 
@@ -1248,8 +1265,8 @@ class ReplayExperiment(object):
 
         return reward_data.max(axis=1).sum()
 
-    def setup_state_selection_grid(self, random_positions=True, valid=False, selected=(), test=False, training=True,
-                                   initial_state=None):
+    def setup_state_selection_grid(self, random_positions=True, valid=False, test=False,
+                                   initial_state=None, assign_keys=True):
 
         """
         Assign state images to the imagestim instances that make up the 3 x 3 state selection grid
@@ -1265,25 +1282,42 @@ class ReplayExperiment(object):
         self.state_selection_dict = {}
 
         # Assign keys for each state
-        self.state_selection_keys, self.phase_key_state_mapping = self.assign_response_keys()
+        if assign_keys:
+            self.state_selection_keys, self.phase_key_state_mapping = self.assign_response_keys()
+
+        # Get valid moves
+        if initial_state is None:
+            valid_moves, valid_states = self.test_moves(0)
+        else:
+            valid_moves, valid_states = self.test_moves(initial_state)
+        self.valid_moves = valid_moves
+
+        displayed_states = valid_states + random.sample([i for i in range(1, len(self.stimuli)) if i not in valid_states],
+                                                        4 - len(valid_states))
+        print "EE", valid_states, displayed_states
 
         # Make invalid images smaller
         if valid:
-            if initial_state is None:
-                valid_moves, valid_states = self.test_moves(0)
-            else:
-                valid_moves, valid_states = self.test_moves(initial_state)
-            self.valid_moves = valid_moves
             invalid_size = [i / 2. for i in self.config['image sizes']['size_selection_image']]
 
-        for n, i in enumerate(self.stimuli[1:]):
-            self.state_selection_images[n][1].image = i
-            self.state_selection_images[n][2].text = self.state_selection_keys[n + 1]
-            if valid and n + 1 not in valid_states:
-                self.state_selection_images[n][1].size = invalid_size
+        for grid_index, state in enumerate(displayed_states):
+            print self.state_selection_keys
+            self.state_selection_images[grid_index][1].image = self.stimuli[state]
+            self.state_selection_images[grid_index][2].text = self.state_selection_keys[state] # TODO ???
+            if valid and state not in valid_states:
+                self.state_selection_images[grid_index][1].size = invalid_size
             else:
-                self.state_selection_images[n][1].size = self.config['image sizes']['size_selection_image']
-            self.state_selection_dict[n + 1] = self.state_selection_images[n][0]
+                self.state_selection_images[grid_index][1].size = self.config['image sizes']['size_selection_image']
+            self.state_selection_dict[state] = self.state_selection_images[grid_index][0]
+
+        # for n, i in enumerate(self.stimuli[1:]):
+        #     self.state_selection_images[n][1].image = i
+        #     self.state_selection_images[n][2].text = self.state_selection_keys[n + 1]
+        #     if valid and n + 1 not in valid_states:
+        #         self.state_selection_images[n][1].size = invalid_size
+        #     else:
+        #         self.state_selection_images[n][1].size = self.config['image sizes']['size_selection_image']
+        #     self.state_selection_dict[n + 1] = self.state_selection_images[n][0]
 
     def draw_state_selection_grid(self, selected=(), test=False):
 
