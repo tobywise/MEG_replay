@@ -26,7 +26,7 @@ MEG_durations:
   start_duration: 8  # Planning phase duration
   start_duration_test: 6  # Planning phase duration - test phase
   pre_move_duration: 1  # 'Get ready to enter moves' duration
-  move_entering_duration_initial: 6  # Initial time given to enter moves in test phase, this reduces gradually
+  move_entering_duration_initial: 10  # Initial time given to enter moves in test phase, this reduces gradually
   move_entering_reduction_length: 40 # Number of trials before move entering duration reaches the true duration
   move_entering_duration: 6  # Time given to enter moves
   pre_move_fixation_duration: 0.5 # Fixation before moves are shown
