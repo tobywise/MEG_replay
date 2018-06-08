@@ -14,6 +14,7 @@ import time
 import copy
 import re
 
+# TODO grid order
 
 class ParallelPort(object):
 
@@ -62,6 +63,7 @@ class ReplayExperiment(object):
         dialogue.addField('Parallel port testing', initial=False)
         dialogue.addField('Monitor', initial=False)
         dialogue.addField('MEG', initial=False)
+        dialogue.addField('Show instructions', initial=True)
         dialogue.show()
 
 
@@ -77,6 +79,7 @@ class ReplayExperiment(object):
             self._parallel_port = dialogue.data[7]
             self.monitoring = dialogue.data[8]
             self.MEG_mode = dialogue.data[9]
+            self.show_instructions = dialogue.data[10]
         else:
             core.quit()
 
@@ -295,7 +298,7 @@ class ReplayExperiment(object):
             self.move_entering_duration_step = (self.config[self.durations]['move_entering_duration_initial'] -
                                                 self.config[self.durations]['move_entering_duration'])  / \
                                                float(self.config[self.durations]['move_entering_reduction_length'])
-            test_passed = self.run_test()
+            test_passed = self.run_test(show_instructions=self.show_instructions)
             core.wait(1)
 
         # Rerun training and test if not passed, until they pass the test
@@ -311,7 +314,7 @@ class ReplayExperiment(object):
         # Run task
         if self._run_main_task:
             self.move_entering_duration = self.config[self.durations]['move_entering_duration']
-            self.run_task()
+            self.run_task(show_instructions=self.show_instructions, show_intro=True)
 
         # Show end screen
         self.show_end_screen()
@@ -363,7 +366,7 @@ class ReplayExperiment(object):
                 self.save_json(1, 1, 'Crash', False, None, None, None, self.subject_id, stopped='Crash')
             raise
 
-    def run_task(self):
+    def run_task(self, show_instructions=True, show_intro=True):
 
         """
         Runs the main task
@@ -371,7 +374,8 @@ class ReplayExperiment(object):
         """
 
         try:
-            self.__run_task(instructions=self.task_instructions, trial_info=self.trial_info)
+            self.__run_task(instructions=self.task_instructions, trial_info=self.trial_info,
+                            show_instructions=show_instructions, show_intro=show_intro)
         except:
             if self.monitoring:
                 self.save_json(1, 1, 'Crash', False, None, None, None, self.subject_id, stopped='Crash')
@@ -539,9 +543,13 @@ class ReplayExperiment(object):
             self.grand_instructions(instructions)
             self.win.flip()
 
-        if show_intro and test:
-            self.grand_instructions(["Starting test phase, press space to begin"])
-            self.win.flip()
+        if show_intro:
+            if test:
+                self.grand_instructions(["Starting test phase, press 1 to begin"])
+                self.win.flip()
+            else:
+                self.grand_instructions(['Starting task'])
+                self.win.flip()
 
         end_state = None
 
