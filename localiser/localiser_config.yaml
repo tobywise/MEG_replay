@@ -1,5 +1,5 @@
 durations:
-  image_duration: 1.8  #
+  image_duration: 1.4  #
   image_jitter: 0.5  #
   fixation_duration: 1  #
   fixation_jitter: 0.5  #

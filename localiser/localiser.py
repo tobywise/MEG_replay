@@ -13,6 +13,8 @@ import time
 import copy
 import re
 
+np.random.seed(004)
+
 class ParallelPort(object):
 
     def __init__(self, port=888, test=False):
@@ -196,7 +198,7 @@ class Localiser(object):
         self.instructions("Welcome to the task", fixation=False)
         self.instructions("We are about to begin, please keep your head still until the next break")
 
-        n_runs = [4, 5]
+        n_runs = [5, 5]
 
         stimuli_location = self.config['directories']['stimuli_path']
 
@@ -214,22 +216,6 @@ class Localiser(object):
             self.instructions("Take a break", fixation=False)
             self.instructions("We are about to begin, please keep your head still until the next break")
 
-
-        self.stimuli = [os.path.join(stimuli_location, i) for i in os.listdir(stimuli_location)
-                        if ('.png' in i or '.jpg' in i or '.jpeg' in i) and 'shock' not in i][
-                       self.config['task_settings']['n_stimuli']:self.config['task_settings']['n_stimuli'] * 2]
-
-        self.instructions("The images you see in the next block will be different from those in the previous block")
-
-        for i in range(n_runs[1 - self.order]):
-
-            print "Block {0} of {1}, {2} variant".format(i + 1, n_runs[1 - self.order], self.variants[1 - self.order])
-
-            self.run_localiser(self.variants[1 - self.order])
-
-            if i < n_runs[1 - self.order] - 1:
-                self.instructions("Take a break", fixation=False)
-                self.instructions("We are about to begin, please keep your head still until the next break")
 
         self.instructions("End of task, thank you for participating!\n\n"
                           "You collected {0} points out of a possible {1}".format(self.n_correct,
