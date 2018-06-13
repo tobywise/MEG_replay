@@ -172,7 +172,7 @@ class ReplayExperiment(object):
 
         monitor = monitors.Monitor('test2', width=40.92, distance=74)
         monitor.setSizePix((1024, 768))
-        self.win = visual.Window(monitor=monitor, size=(1024, 768), fullscr=True, allowGUI=False, color='gray',
+        self.win = visual.Window(monitor=monitor, size=(1024, 768), fullscr=True, allowGUI=False, color='#616161',
                                  units='deg',
                                  colorSpace='hex')
         # self.win.mouseVisible = False  # make the mouse invisible
@@ -233,6 +233,7 @@ class ReplayExperiment(object):
         stimuli_location = self.config['directories']['stimuli_path']
         self.stimuli = [os.path.join(stimuli_location, i) for i in os.listdir(stimuli_location)
                         if ('.png' in i or '.jpg' in i or '.jpeg' in i) and 'shock' not in i][:self.matrix.shape[0]]
+        print self.stimuli
 
         random.shuffle(self.stimuli)  # make sure stimuli are randomly assigned to states
 
@@ -397,8 +398,9 @@ class ReplayExperiment(object):
         self.start_duration = self.config[self.durations]['start_duration']
         self.pre_move_duration = self.config[self.durations]['pre_move_duration']
         self.move_entering_duration = self.config[self.durations]['move_entering_duration']
-        self.move_duration = self.config[self.durations]['move_durations']
-        self.move_period_duration = self.move_duration * (self.n_moves + 1)
+        self.move_durations = self.config[self.durations]['move_durations']
+        self.cumulative_move_durations = np.cumsum([0] + self.move_durations)
+        self.move_period_duration = np.sum(self.move_durations)
 
         test_moves = np.repeat(['up', 'down', 'left', 'right'], 5)
 
@@ -534,8 +536,9 @@ class ReplayExperiment(object):
         self.pre_move_duration = self.config[self.durations]['pre_move_duration']
         # self.move_entering_duration = self.config[self.durations]['move_entering_duration']
         self.pre_move_fixation_duration = self.config[self.durations]['pre_move_fixation_duration']
-        self.move_duration = self.config[self.durations]['move_durations']
-        self.move_period_duration = self.move_duration * (self.n_moves + 1)
+        self.move_durations = self.config[self.durations]['move_durations']
+        self.cumulative_move_durations = np.cumsum([0] + self.move_durations)
+        self.move_period_duration = np.sum(self.move_durations)
         self.shock_symbol_delay = self.config[self.durations]['shock_symbol_delay']
 
         test_moves = np.repeat(['up', 'down', 'left', 'right'], 5)
@@ -1086,7 +1089,6 @@ class ReplayExperiment(object):
 
         """
 
-        start = time.time()
         # set image
         if self.display_image.image != picture:
             self.display_image.image = picture
@@ -1128,16 +1130,16 @@ class ReplayExperiment(object):
 
         for n, state in enumerate(moves):
 
-            if start_time + n * self.move_duration <= t < end_time + (n + 1) * self.move_duration:
+            if start_time + self.cumulative_move_durations[n] <= t < start_time + self.cumulative_move_durations[n + 1]:
 
                 self.show_move(outcome[state], shock_outcome[state], self.stimuli[state], t,
-                               start_time + n * self.move_duration + self.shock_symbol_delay, self.shock_delay)
+                               start_time + self.cumulative_move_durations[n] + self.shock_symbol_delay, self.shock_delay)
 
                 self.send_trigger((int(state) + 1) * 2, self.trigger_dict['State_{0}'.format(n)])
                 self.trigger_dict['State_{0}'.format(n)] = True
 
                 if self.MEG_mode:
-                    if start_time + n * self.move_duration < t < start_time + 0.5:
+                    if start_time < t < start_time + 0.5:
                         self.photodiode_square.fillColor = 'white'
                         self.photodiode_square.draw()
                     else:

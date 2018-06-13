@@ -15,8 +15,7 @@ durations:
   move_entering_reduction_length: 40 # Number of trials before move entering duration reaches the true duration
   move_entering_duration: 4  # Time given to enter moves
   pre_move_fixation_duration: 0.5 # Fixation before moves are shown
-  move_durations: 1.8  # Time each move is shown for
-  final_state_duration: 3  # Time the final state is shown for
+  move_durations: !!python/list [1.8, 1.8, 1.8, 3]  # Duration moves are shown for
   outcome_only_text_duration: 2  #
   outcome_only_duration: 3  #
   rest_duration: 2  # Rest after outcome
@@ -34,8 +33,7 @@ MEG_durations:
   move_entering_reduction_length: 40 # Number of trials before move entering duration reaches the true duration
   move_entering_duration: 6  # Time given to enter moves
   pre_move_fixation_duration: 0.5 # Fixation before moves are shown
-  move_durations: 1.8  # Time each move is shown for#
-  final_state_duration: 3  # Time the final state is shown for
+  move_durations: !!python/list [1.8, 1.8, 1.8, 3]  # Duration moves are shown for
   outcome_only_text_duration: 2  #
   outcome_only_duration: 3  #
   rest_duration: 6  # Rest after outcome
