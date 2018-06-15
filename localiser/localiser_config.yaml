@@ -6,11 +6,11 @@ durations:
   text_duration: 1.2  #
   text_jitter: 0.3  #
 task_settings:
-  n_trials_standard: 210
-  n_trials_text: 150
+  n_trials: 150
   n_stimuli: 11
-  percentage_small: 30
-  percentage_null: 5
+  n_blocks: 6
+  percentage_faded: 30
+  percentage_null: 7
 image_sizes:
   size_display_image: !!python/tuple [11, 11]  #
   size_display_image_small: !!python/tuple [10.5, 10.5]  #
