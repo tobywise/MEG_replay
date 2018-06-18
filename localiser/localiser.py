@@ -32,6 +32,7 @@ class ParallelPort(object):
 
         try:
             self._parallel = ctypes.WinDLL('simpleio.dll')
+            self.test = False
         except:
             self.test = True
             warnings.warn("NO PARALLEL PORT FOUND: RUNNING IN TEST MODE")

@@ -33,6 +33,7 @@ class ParallelPort(object):
 
         try:
             self._parallel = ctypes.WinDLL('simpleio.dll')
+            self.test = False
         except:
             self.test = True
             warnings.warn("NO PARALLEL PORT FOUND: RUNNING IN TEST MODE")
@@ -373,7 +374,7 @@ class ReplayExperiment(object):
         print self.max_reward
         self.grand_instructions(['End of experiment\n'
                                  'You collected {0}% of the maximum available rewards'.format(
-            np.round(self.reward_value / self.max_reward))])
+            np.round(self.reward_value / self.max_reward), 2)])
         self.win.flip()
         core.wait(10)
 
