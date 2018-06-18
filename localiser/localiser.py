@@ -177,7 +177,7 @@ class Localiser(object):
                     faded = False
 
                 self.image.draw()
-                self.win.callOnFlip(self.parallel_port.setData, (image_idx + 1) * 2)
+                self.win.callOnFlip(self.parallel_port.setData, (image_idx + 1) * 2)  # Trigger value = (idx + 1) * 2
 
             fliptime = self.win.flip()
             self.parallel_port.setData(0)
@@ -266,6 +266,13 @@ class Localiser(object):
 
         # Shuffle stimuli
         random.shuffle(self.stimuli)
+
+        # Save stimuli order
+        stim_fname = '{0}/{1}_Subject{2}_{3}_localiser_stimuli.txt'.format(self.save_folder, self.save_prefix, self.subject_id,
+                                                                    data.getDateStr())
+
+        with open(stim_fname, 'wb') as f:
+            f.write(str(self.stimuli))
 
         n_blocks = self.config['task_settings']['n_blocks']
 
