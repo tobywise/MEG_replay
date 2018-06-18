@@ -13,22 +13,50 @@ import ctypes
 import time
 import copy
 import re
+import warnings
 
 
 class ParallelPort(object):
 
-    def __init__(self, port=888, test=False):
-        self.test = test
-        if not self.test:
+    """
+    Used to interact with the parallel port. If no parallel port is present, just prints triggers
+
+    """
+
+    def __init__(self, port=888):
+
+        """
+        Args:
+            port: Parallel port number
+
+        """
+
+        try:
             self._parallel = ctypes.WinDLL('simpleio.dll')
+        except:
+            self.test = True
+            warnings.warn("NO PARALLEL PORT FOUND: RUNNING IN TEST MODE")
+
         self.port = port
+        self.value = 0
+
+        # Send 0 when initialising
+        if not self.test:
+            self._parallel.outp(self.port, self.value)
+
 
     def setData(self, data=0):
 
-        if not self.test:
-            self._parallel.outp(self.port, data)
-        else:
-            pass
+        if data != self.value:
+
+            if not self.test:
+                self._parallel.outp(self.port, data)
+                print "-- Sending value {0} to parallel port -- ".format(data)
+            else:
+                print "-- Sending value {0} to parallel port -- ".format(data)
+
+            self.value = data
+
 
 
 class ReplayExperiment(object):
@@ -59,7 +87,6 @@ class ReplayExperiment(object):
         dialogue.addField('Training', initial=True)
         dialogue.addField('Test', initial=True)
         dialogue.addField('Task', initial=True)
-        dialogue.addField('Parallel port testing', initial=False)
         dialogue.addField('Monitor', initial=False)
         dialogue.addField('MEG', initial=False)
         dialogue.addField('Show instructions', initial=True)
@@ -76,11 +103,10 @@ class ReplayExperiment(object):
             self._run_training = dialogue.data[4]
             self._run_test = dialogue.data[5]
             self._run_main_task = dialogue.data[6]
-            self._parallel_port = dialogue.data[7]
-            self.monitoring = dialogue.data[8]
-            self.MEG_mode = dialogue.data[9]
-            self.show_instructions = dialogue.data[10]
-            self.photodiode = dialogue.data[11]
+            self.monitoring = dialogue.data[7]
+            self.MEG_mode = dialogue.data[8]
+            self.show_instructions = dialogue.data[9]
+            self.photodiode = dialogue.data[10]
         else:
             core.quit()
 
@@ -192,7 +218,7 @@ class ReplayExperiment(object):
         self.response_phases = self.config['response keys']['response_phases']  # levels of the tree
 
         # Set up parallel port
-        self.parallel_port = ParallelPort(port=888, test=self._parallel_port)
+        self.parallel_port = ParallelPort(port=888)
         self.n_shocks = self.config[self.durations]['n_shocks']
         self.shock_delay = self.config[self.durations]['shock_delay']
 
@@ -233,7 +259,13 @@ class ReplayExperiment(object):
         stimuli_location = self.config['directories']['stimuli_path']
         self.stimuli = [os.path.join(stimuli_location, i) for i in os.listdir(stimuli_location)
                         if ('.png' in i or '.jpg' in i or '.jpeg' in i) and 'shock' not in i][:self.matrix.shape[0]]
-        print self.stimuli
+
+        # Save stimulu order
+        stim_fname = '{0}/{1}_Subject{2}_{3}_localiser_stimuli.txt'.format(self.save_folder, self.save_prefix, self.subject_id,
+                                                                    data.getDateStr())
+
+        with open(stim_fname, 'wb') as f:
+            f.write(str(self.stimuli))
 
         random.shuffle(self.stimuli)  # make sure stimuli are randomly assigned to states
 
