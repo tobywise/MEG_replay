@@ -285,6 +285,8 @@ class Localiser(object):
 
             # Show current performance relative to average performance
             current_performance = self.get_performance()
+            if current_performance < 20:
+                current_performance = 25
             average_performance = np.max([current_performance + ((n_blocks / 2) - (n_blocks - i)), (i + 1) * 5])
 
             print current_performance, average_performance
