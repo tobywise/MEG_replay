@@ -69,5 +69,13 @@ image sizes:
 fonts:
   font_path: 'fonts/OpenSans-Regular.ttf'
   font_name: 'Open Sans'
+triggers:
+  rest: 30
+  planning: 60
+  move_entering: 100
+  outcome_only_outcome: 40
+  outcome_only_warning: 80
+  shock_outcome: 50
+
 
 

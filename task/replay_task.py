@@ -742,7 +742,8 @@ class ReplayExperiment(object):
                         text = "Outcome only"
                         self.instructions(text, max_wait=0)
 
-                        self.send_trigger(80, self.trigger_dict['Outcome_only_warning'])
+                        self.send_trigger(self.config['triggers']['outcome_only_warning'],
+                                          self.trigger_dict['Outcome_only_warning'])
                         self.trigger_dict['Outcome_only_warning'] = True
 
                         if not monitoring_saved['Outcome'] and self.monitoring:
@@ -766,7 +767,8 @@ class ReplayExperiment(object):
                                            'outcome_only_duration'] / 2.,
                                        shock_delay=self.shock_delay)
 
-                        self.send_trigger(40, self.trigger_dict['Outcome_only_outcome'])
+                        self.send_trigger(self.config['triggers']['outcome_only_outcome'],
+                                          self.trigger_dict['Outcome_only_outcome'])
                         self.trigger_dict['Outcome_only_outcome'] = True
 
                         if self.MEG_mode:
@@ -782,6 +784,8 @@ class ReplayExperiment(object):
 
                     # Rest period
                     elif t >= outcome_only_change_times[3]:
+                        self.send_trigger(self.config['triggers']['rest'], self.trigger_dict['Rest'])
+                        self.trigger_dict['Rest'] = True
                         continue_trial = False
 
                 else:
@@ -796,7 +800,7 @@ class ReplayExperiment(object):
                                                                           None,
                                                                           outcome, shock_outcome, self.subject_id)
 
-                        self.send_trigger(60, self.trigger_dict['Planning'])
+                        self.send_trigger(self.config['triggers']['planning'], self.trigger_dict['Planning'])
                         self.trigger_dict['Planning'] = True
 
                         if self.MEG_mode:
@@ -813,7 +817,7 @@ class ReplayExperiment(object):
                         event.clearEvents()
                         self.display_image.setPos((0, 0))
 
-                        self.send_trigger(100, self.trigger_dict['Move_entering'])
+                        self.send_trigger(self.config['triggers']['move_entering'], self.trigger_dict['Move_entering'])
                         self.trigger_dict['Move_entering'] = True
 
                         if self.MEG_mode:
@@ -947,7 +951,7 @@ class ReplayExperiment(object):
                                                                           None, outcome,
                                                                           shock_outcome, self.subject_id)
 
-                        self.send_trigger(30, self.trigger_dict['Rest'])
+                        self.send_trigger(self.config['triggers']['rest'], self.trigger_dict['Rest'])
                         self.trigger_dict['Rest'] = True
 
                         if self.MEG_mode:
@@ -1137,6 +1141,8 @@ class ReplayExperiment(object):
             self.shocks_given = self.send_shocks(self.shocks_given, n_shocks=self.n_shocks)
         elif t > shock_time and shock == 1:  # Show shock outcome
             self.outcome_image.draw()
+            self.send_trigger(self.config['triggers']['shock_outcome'], self.trigger_dict['Shock'])
+            self.trigger_dict['Shock'] = True
 
         # draw everything
         self.display_image.draw()
@@ -1168,7 +1174,7 @@ class ReplayExperiment(object):
                 self.show_move(outcome[state], shock_outcome[state], self.stimuli[state], t,
                                start_time + self.cumulative_move_durations[n] + self.shock_symbol_delay, self.shock_delay)
 
-                self.send_trigger((int(state) + 1) * 2, self.trigger_dict['State_{0}'.format(n)])
+                self.send_trigger((n + 1) * 2, self.trigger_dict['State_{0}'.format(n)])
                 self.trigger_dict['State_{0}'.format(n)] = True
 
                 if self.MEG_mode:
