@@ -374,7 +374,7 @@ class ReplayExperiment(object):
         print self.max_reward
         self.grand_instructions(['End of experiment\n'
                                  'You collected {0}% of the maximum available rewards'.format(
-            np.round(self.reward_value / self.max_reward), 2)])
+            np.round(float(self.reward_value) / self.max_reward) * 100)])
         self.win.flip()
         core.wait(10)
 
