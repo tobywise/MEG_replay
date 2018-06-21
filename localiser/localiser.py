@@ -285,12 +285,23 @@ class Localiser(object):
 
             # Show current performance relative to average performance
             current_performance = self.get_performance()
-            if current_performance < 20:
-                current_performance = 25
+            if current_performance < i * 4:
+                current_performance = i * 4 + 5
             average_performance = np.max([current_performance + ((n_blocks / 2) - (n_blocks - i)), (i + 1) * 5])
 
-            print current_performance, average_performance
-            average_performance = float(raw_input("Enter average performance"))
+            print "CURRENT PERFORMANCE"
+            print current_performance
+            print "AVERAGE PERFORMANCE"
+            print average_performance
+
+            current_performance, average_performance = raw_input("Enter performance").split(',')
+            current_performance = int(re.search('\d+', current_performance).group())
+            average_performance = int(re.search('\d+', average_performance).group())
+
+            if current_performance > 100 or average_performance > 100:
+                current_performance, average_performance = raw_input("Enter performance").split(',')
+                current_performance = int(re.search('\d+', current_performance).group())
+                average_performance = int(re.search('\d+', average_performance).group())
 
             self.show_performance(current_performance, average_performance)
 
