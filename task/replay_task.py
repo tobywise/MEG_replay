@@ -712,7 +712,7 @@ class ReplayExperiment(object):
 
             # Trigger dict - lets us know whether we've sent triggers yet
             self.trigger_dict = {'Planning': False, 'Move_entering': False, 'State_0': False, 'State_1': False,
-                            'State_2': False,
+                            'State_2': False, 'NoShock': False,
                             'State_3': False, 'Shock': False, 'Rest': False, 'Outcome_only_warning': False,
                             'Outcome_only_outcome': False}
 
@@ -1143,6 +1143,9 @@ class ReplayExperiment(object):
             self.outcome_image.draw()
             self.send_trigger(self.config['triggers']['shock_outcome'], self.trigger_dict['Shock'])
             self.trigger_dict['Shock'] = True
+        elif t > shock_time and shock == 0:  # Send trigger for no shock outcome
+            self.send_trigger(self.config['triggers']['no_shock_outcome'], self.trigger_dict['NoShock'])
+            self.trigger_dict['NoShock'] = True
 
         # draw everything
         self.display_image.draw()

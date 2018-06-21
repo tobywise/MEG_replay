@@ -76,6 +76,7 @@ triggers:
   outcome_only_outcome: 40
   outcome_only_warning: 80
   shock_outcome: 50
+  no_shock_outcome: 52
 
 
 
