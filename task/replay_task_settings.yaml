@@ -13,7 +13,7 @@ durations:
   pre_move_duration: 1  # 'Get ready to enter moves' duration
   move_entering_duration_initial: 10  # Initial time given to enter moves in test phase, this reduces gradually
   move_entering_reduction_length: 40 # Number of trials before move entering duration reaches the true duration
-  move_entering_duration: 4  # Time given to enter moves
+  move_entering_duration: 8  # Time given to enter moves
   pre_move_fixation_duration: 0.5 # Fixation before moves are shown
   move_durations: !!python/list [1.8, 1.8, 1.8, 3]  # Duration moves are shown for
   outcome_only_text_duration: 2  #
