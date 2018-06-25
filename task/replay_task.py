@@ -184,7 +184,7 @@ class ReplayExperiment(object):
         print "Maximum available reward = {0}".format(self.max_reward)
 
         # Things to save
-        self.data_keys = ['Subject', 'trial_number', 'State_1', 'State_2', 'State_3',
+        self.data_keys = ['Subject', 'trial_number', 'State_1', 'State_2', 'State_3', 'outcome_type',
                           'RT_1', 'RT_2', 'RT_3', 'Reward_received', 'Shock_received', 'trial_type',
                           'State_1_reward', 'State_2_reward', 'State_3_reward', 'State_4_reward',
                           'State_1_shock', 'State_2_shock', 'State_3_shock', 'State_4_shock']
@@ -613,6 +613,8 @@ class ReplayExperiment(object):
         else:
             n_trials = self.n_test_trials
 
+        previously_shocked = False
+
         for i in range(n_trials):  # TRIAL LOOP - everything in here is repeated each trial
 
             print "Trial {0} / {1}".format(i + 1, n_trials)
@@ -667,11 +669,11 @@ class ReplayExperiment(object):
             moves_to_enter = []
             valid_moves = False
             moves_validated = False
-            previously_shocked = False
             self.shocks_given = 0
+            outcome_type = 'moves_entered'
 
             # Generated moves for incorrect trials
-            generated_moves = None
+            moves = None
 
             # Setup selection grid
             #self.setup_state_selection_grid(random_positions=True, test=self.testing_mode)
@@ -707,6 +709,7 @@ class ReplayExperiment(object):
             if not test and np.random.randint(100) <= self.config['outcomes']['percentage_outcome_only'] \
                     and not previously_shocked:
                 trial_type = 1
+                outcome_type = 'outcome_only'
             else:
                 trial_type = 0
 
@@ -754,7 +757,7 @@ class ReplayExperiment(object):
                                                                          [int(outcome_state)],
                                                                          outcome, shock_outcome, self.subject_id)
 
-                        if self.MEG_mode:
+                        if self.MEG_mode and self.photodiode:
                             if t < 0.5:
                                 self.photodiode_square.fillColor = 'white'
                                 self.photodiode_square.draw()
@@ -900,12 +903,13 @@ class ReplayExperiment(object):
                                 self.main_text.draw()
 
                             else:
-                                if generated_moves is None:
+                                if moves is None:
                                     self.outcome_text.text = "Too few moves entered"
                                     self.outcome_text.draw()
-                                    _, generated_moves = self.test_moves(0, outcome_state)
+                                    _, moves = self.test_moves(0, outcome_state)
+                                    outcome_type = 'too_few_moves'
 
-                                self.show_move_sequence(generated_moves, change_times[4], change_times[5], t, outcome,
+                                self.show_move_sequence(moves, change_times[4], change_times[5], t, outcome,
                                                         shock_outcome, test)
 
                         # Show generated moves and warning if wrong moves entered
@@ -916,12 +920,13 @@ class ReplayExperiment(object):
                                 self.main_text.draw()
 
                             else:
-                                if generated_moves is None:
+                                if moves is None:
                                     self.outcome_text.text = "Wrong moves entered"
                                     self.outcome_text.draw()
-                                    _, generated_moves = self.test_moves(0, outcome_state)
+                                    _, moves = self.test_moves(0, outcome_state)
+                                    outcome_type = 'invalid_moves'
 
-                                self.show_move_sequence(generated_moves, change_times[4], change_times[5], t, outcome,
+                                self.show_move_sequence(moves, change_times[4], change_times[5], t, outcome,
                                                         shock_outcome, test)
 
                         # Show entered moves
@@ -979,8 +984,7 @@ class ReplayExperiment(object):
                         print "Current accumulated reward = {0}".format(self.reward_value)
 
                     # Record whether they got shocked
-                    if (generated_moves is not None and shock_outcome[generated_moves[-1]]) or \
-                        (len(moves) and shock_outcome[moves[-1]]):
+                    if len(moves) and shock_outcome[moves[-1]]:
                         previously_shocked = True
 
                     # Responses
@@ -1011,6 +1015,7 @@ class ReplayExperiment(object):
                     for i in range(4):
                         self.response_data['State_{0}_reward'.format(i + 1)] = outcome[i + 7]
                         self.response_data['State_{0}_shock'.format(i + 1)] = shock_outcome[i + 7]
+                    self.response_data['outcome_type'] = outcome_type
 
                     if not test:
                         csvWriter([self.response_data[category] for category in self.data_keys])  # Write data
@@ -1035,6 +1040,8 @@ class ReplayExperiment(object):
                         monitoring_saved['Pause'] = self.save_json(i + 1, len(trial_info), 'Pause', valid_moves,
                                                                    None, None, None, self.subject_id, stopped='Space')
                     event.waitKeys(['space', ' ', '1'])
+                    self.send_trigger(0, False)
+                    self.clock.reset()
 
                 # quit if subject pressed scape
                 if event.getKeys(["escape", "esc"]):
