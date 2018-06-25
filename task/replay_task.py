@@ -15,6 +15,7 @@ import copy
 import re
 import warnings
 
+# TODO pause - reset trial
 
 class ParallelPort(object):
 
@@ -615,6 +616,8 @@ class ReplayExperiment(object):
         for i in range(n_trials):  # TRIAL LOOP - everything in here is repeated each trial
 
             print "Trial {0} / {1}".format(i + 1, n_trials)
+
+            self.send_trigger(0, False)
 
             # self.io.clearEvents('all')  # clear keyboard events
 
