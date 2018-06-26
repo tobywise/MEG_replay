@@ -1,0 +1,1 @@
+['../Task/Stimuli\\fish.jpeg', '../Task/Stimuli\\cheetah.jpg', '../Task/Stimuli\\falcon.jpg', '../Task/Stimuli\\dragonfly.jpg', '../Task/Stimuli\\cookies.jpg', '../Task/Stimuli\\fire.jpg', '../Task/Stimuli\\car.jpg', '../Task/Stimuli\\dog.jpeg', '../Task/Stimuli\\Cat.jpeg', '../Task/Stimuli\\coffee.jpg', '../Task/Stimuli\\desert.jpg']
