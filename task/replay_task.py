@@ -93,6 +93,7 @@ class ReplayExperiment(object):
         dialogue.addField('MEG', initial=False)
         dialogue.addField('Show instructions', initial=True)
         dialogue.addField('Show photodiode square', initial=False)
+        dialogue.addField('Pre-scanner practice', initial=False)
         dialogue.show()
 
 
@@ -109,6 +110,7 @@ class ReplayExperiment(object):
             self.MEG_mode = dialogue.data[8]
             self.show_instructions = dialogue.data[9]
             self.photodiode = dialogue.data[10]
+            self.prescanner = dialogue.data[11]
         else:
             core.quit()
 
@@ -259,8 +261,15 @@ class ReplayExperiment(object):
 
         # State image files
         stimuli_location = self.config['directories']['stimuli_path']
-        self.stimuli = [os.path.join(stimuli_location, i) for i in os.listdir(stimuli_location)
-                        if ('.png' in i or '.jpg' in i or '.jpeg' in i) and 'shock' not in i][:self.matrix.shape[0]]
+        if not self.prescanner:
+            self.stimuli = [os.path.join(stimuli_location, i) for i in os.listdir(stimuli_location)
+                            if ('.png' in i or '.jpg' in i or '.jpeg' in i) and 'shock' not in i][:self.matrix.shape[0]]
+        else:
+            self.stimuli = [os.path.join(stimuli_location, i) for i in os.listdir(stimuli_location)
+                            if ('.png' in i or '.jpg' in i or '.jpeg' in i) and 'shock' not in i][self.matrix.shape[0]:self.matrix.shape[0]*2]
+
+        if len(self.stimuli) < self.matrix.shape[0]:
+            raise AttributeError("Too few stimuli found")
 
         # Save stimulu order
         stim_fname = '{0}/{1}_Subject{2}_{3}_localiser_stimuli.txt'.format(self.save_folder, self.save_prefix, self.subject_id,
