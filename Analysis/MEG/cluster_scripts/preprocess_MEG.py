@@ -73,7 +73,7 @@ def preproc_meg(data_dir):
     localiser_epochs.drop_bad()
 
     task_epochs = mne.Epochs(task_raw, task_events, tmin=0, tmax=8, preload=True,
-                        reject=reject)
+                        reject=reject, event_id=[30, 60])
     task_epochs.drop_bad()
 
     # Downsample to 100 Hz
@@ -87,10 +87,10 @@ def preproc_meg(data_dir):
 
     print("ICA")
     reject = dict(mag=5e-9)
-    full_raw = mne.concatenate_raws([localiser_raw, task_raw])
+    # full_raw = mne.concatenate_raws([localiser_raw, task_raw])
 
     ica = ICA(n_components=0.95, method='fastica',
-              random_state=0, max_iter=100).fit(full_raw, decim=1, reject=reject)
+              random_state=0, max_iter=100).fit(localiser_epochs, decim=1, reject=reject)
     ica.plot_components()
 
     pp = PdfPages(os.path.join(data_dir, 'ICA.pdf'))
@@ -102,7 +102,7 @@ def preproc_meg(data_dir):
     ica.save(os.path.join(data_dir, 'meg-ica.fif.gz'))
 
     # detect EOG by correlation
-    eog_inds, scores = ica.find_bads_eog(full_raw)
+    eog_inds, scores = ica.find_bads_eog(localiser_epochs)
     print(eog_inds)
 
     print("SAVING")
