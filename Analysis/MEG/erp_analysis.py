@@ -1,18 +1,18 @@
 from mne.io import read_raw_ctf
 import mne
-from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 from mne.preprocessing import ICA, create_eog_epochs
 import numpy as np
 import os
-import argparse
+
 
 """
 PREPROCESSING
 """
 
 # This code will find any .ds directories in a folder and put them into a list
-data_dir = 'path/to/meg'
+# Make sure you have one folder per subject containing all their .ds files
+data_dir = '/path/to/meg/data'
 data = os.listdir(data_dir)
 data = sorted([i for i in data if '.ds' in i])
 
@@ -22,58 +22,180 @@ for i in range(len(data)):
     raws.append(read_raw_ctf(os.path.join(data_dir, data[i]), preload=True))
 
 raw = mne.concatenate_raws(raws)  # Raw is the full task raw data
+del raws  # delete the individual raw data files to save memory
+
+# Find events based on triggers
+events = mne.find_events(raw, stim_channel='UPPT001', shortest_event=1)
+events[:, 0] += 20  # adjust for presentation latency
 
 # Remove the CTF compensation
 raw.apply_gradient_compensation(0)
+
+# Select MEG channels
+raw = raw.pick_types('mag')
+raw.pick_channels(raw.info['ch_names'][29:])
 
 # Do some other cleaning
 mf_kwargs = dict(origin=(0., 0., 0.), st_duration=10.)
 raw = mne.preprocessing.maxwell_filter(raw, **mf_kwargs)
 
-# Plot the raw data
+# Plot the raw data - this produces an interactive plot
 raw.plot()
 
-# Manually set EOG channels
-raw.set_channel_types({'UADC001-2910': 'eog', 'UADC002-2901': 'eog', 'UADC003-2901': 'eog'})
+# bad channels
+raw.info['bads'] = []
 
 # Filter the data
 raw.filter(1, 30, method='fir', fir_design='firwin')  # Filter is set to 1-30hz
 
-# Find events based on triggers
-events = mne.find_events(raw, stim_channel='UPPT001', shortest_event=1)
+# We can plot the power spectrum to see the effect of the filter
+raw.plot_psd(area_mode='range', tmax=10.0,  average=False)
+
 
 # Set epoch rejection criteria - this can be changed depending on how stringent you want to be
-reject = dict(mag=5e-9, eog=20)
+reject = dict(mag=5e-9)
 
-# Split up into epochs
-epochs = mne.Epochs(raw, events, tmin=-0.1, tmax=0.8, preload=True,
-                              event_id=[40, 8],
+# Split up into epochs - we're interested in events 40, 8, and 50
+epochs = mne.Epochs(raw, events, tmin=-0.1, tmax=3.01, preload=True,
+                              event_id=[40, 8, 50],
                               reject=reject)
 
-
 # Downsample to 100 Hz
-epochs = epochs.copy().resample(100, npad='auto')
+epochs.resample(100, npad="auto")
 
 # Run ICA
 ica = ICA(n_components=0.95, method='fastica',
-          random_state=0, max_iter=100).fit(raw, decim=1, reject=reject)
+          random_state=0, max_iter=100).fit(epochs, decim=1, reject=reject)
 
 # Plot components
 ica.plot_components()
 
-# ICA results can be saved if needed
-ica.save(os.path.join(data_dir, 'meg-ica.fif.gz'))
+# You can also plot the timecourses of the components - the component numbers you want to see are provided as a list
+ica.plot_sources(epochs, range(0, ica.n_components_))
 
-# Detect eye movement related components by correlation
-eog_inds, scores = ica.find_bads_eog(raw)
-print(eog_inds)
+# And various other things like the power spectrum - the list given to the picks argument here should contain the components you want to look at
+ica.plot_properties(epochs, picks=[0, 3])
 
-ica.exclude = [0, 1, 2]  # ICA components to remove
-
+# Remove components
+ica.exclude = [0, 3]  # ICA components to remove
 ica.apply(epochs)  # Remove these components
 
 # Save the data (MNE likes epoch files to end in -epo)
-epochs.save('epoched_data-epo.fif.gz')
+epochs.save(os.path.join(data_dir, 'epoched_data-epo.fif.gz'))
+
+
+"""
+ERP analysis
+"""
+
+# Read in the epoched data if you need to
+epochs = mne.read_epochs(os.path.join(data_dir, 'epoched_data-epo.fif.gz'))
+
+import pandas as pd
+behaviour = pd.read_csv(r'path/to/behavioural/data')
+tt = behaviour['trial_type'].values
+
+
+# Remove extra events - hopefully this will work...
+count = 0
+
+for i in range(len(epochs)):
+
+    if i < len(epochs):
+
+        if epochs.events[i, 2] == 8:
+            if tt[count] != 0:
+                print tt[count]
+                print i
+                epochs.drop(i)
+                count += 1
+            else:
+                # print tt[count]
+                count += 1
+
+        elif epochs.events[i, 2] == 40:
+            count += 1
+
+
+# Get outcome events, 8 = normal outcomes (when the final state is displayed), 40 = outcome only warnings (we'll
+# get the outcomes by starting after 2 seconds), 50 = shock outcomes
+normal_outcomes = epochs['8']
+outcome_only_outcomes = epochs['40']
+shock_outcomes = epochs['50']
+
+# Crop the epochs so that they start 0.1 seconds before onset and end after 1 second
+normal_outcomes = normal_outcomes.crop(-0.1, 1)
+outcome_only_outcomes = outcome_only_outcomes.crop(1.9, 3)
+shock_outcomes = shock_outcomes.crop(-0.1, 0.8)
+
+# Adjust the times for the outcome only outcome
+outcome_only_outcomes.times = outcome_only_outcomes.times - 2
+
+# Combine all outcome trials
+outcomes = mne.concatenate_epochs([normal_outcomes, outcome_only_outcomes]).pick_types('mag')
+
+# Save these for use later
+outcomes.save(os.path.join(data_dir, 'outcomes-epo.fif.gz'))
+shock_outcomes.save(os.path.join(data_dir, 'shock_outcomes-epo.fif.gz'))
+
+"""
+Look at some ERFs!
+"""
+
+# Get the evoked response for shock outcomes
+shock_evoked = shock_outcomes.average()
+shock_evoked.plot_joint(ts_args=dict(time_unit='s'), topomap_args=dict(time_unit='s'))
+
+# If you want to look at power
+from mne.time_frequency import tfr_morlet
+freqs = np.logspace(*np.log10([6, 35]), num=8)
+n_cycles = freqs / 2.  # different number of cycle per frequency
+
+power, itc = tfr_morlet(shock_outcomes, freqs=freqs, n_cycles=n_cycles, use_fft=True,
+                        return_itc=True, decim=3, n_jobs=1)
+power.plot_topo(baseline=(-0.5, 0), mode='logratio', title='Average power')
+
+
+########################################################
+
+# And the same for reward outcomes
+reward_evoked = outcomes.average()
+reward_evoked.plot_joint(ts_args=dict(time_unit='s'), topomap_args=dict(time_unit='s'))
+
+# Load behavioural data and recode things
+behavioural = pd.read_csv('path/to/behavioural/data')[1:]
+behavioural['reward'] = np.nan
+behavioural['reward'][behavioural['State_3'] == 7] = behavioural['State_1_reward'][behavioural['State_3'] == 7]
+behavioural['reward'][behavioural['State_3'] == 8] = behavioural['State_2_reward'][behavioural['State_3'] == 8]
+behavioural['reward'][behavioural['State_3'] == 9] = behavioural['State_3_reward'][behavioural['State_3'] == 9]
+behavioural['reward'][behavioural['State_3'] == 10] = behavioural['State_4_reward'][behavioural['State_3'] == 10]
+
+# Drop the first trial
+outcomes.drop(0)
+
+# Assign behavioural data to metadata attribute
+outcomes.metadata = behavioural.assign(Intercept=1)
+
+# Linear regression
+# The regression has two terms - the intercept (not interesting) and the reward level (interesting)
+
+from mne.stats import linear_regression, fdr_correction
+names = ["Intercept", 'reward']
+res = linear_regression(outcomes, outcomes.metadata[names], names=names)
+
+# Create an "evoked" object for the reward predictor - this represents the beta value for reward level in the model
+# across time points and gradiometers
+reward_evoked = res["reward"].beta
+reward_evoked.plot_joint(ts_args=dict(time_unit='s'), topomap_args=dict(time_unit='s'))
+
+# You can choose which time points the plot shows scalp plots for using the times argument
+reward_evoked.plot_joint(ts_args=dict(time_unit='s'), topomap_args=dict(time_unit='s'), times=[.09, .45])
 
 
 
+
+"""
+Group analysis
+"""
+
+# TBC...
