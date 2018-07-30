@@ -15,7 +15,6 @@ import copy
 import re
 import warnings
 
-# TODO pause - reset trial
 
 class ParallelPort(object):
 
@@ -24,7 +23,7 @@ class ParallelPort(object):
 
     """
 
-    def __init__(self, port=888):
+    def __init__(self, port=888, trigger_record_file=None):
 
         """
         Args:
@@ -42,6 +41,8 @@ class ParallelPort(object):
         self.port = port
         self.value = 0
 
+        self.trigger_record_file = trigger_record_file
+
         # Send 0 when initialising
         if not self.test:
             self._parallel.outp(self.port, self.value)
@@ -54,8 +55,12 @@ class ParallelPort(object):
             if not self.test:
                 self._parallel.outp(self.port, data)
                 print "-- Sending value {0} to parallel port -- ".format(data)
+                if self.trigger_record_file:
+                    self.trigger_record_file.write("-- Sending value {0} to parallel port -- \n".format(data))
             else:
                 print "-- Sending value {0} to parallel port -- ".format(data)
+                if self.trigger_record_file:
+                    self.trigger_record_file.write("-- Sending value {0} to parallel port -- \n".format(data))
 
             self.value = data
 
@@ -186,8 +191,7 @@ class ReplayExperiment(object):
         # Things to save
         self.data_keys = ['Subject', 'trial_number', 'State_1', 'State_2', 'State_3', 'outcome_type',
                           'RT_1', 'RT_2', 'RT_3', 'Reward_received', 'Shock_received', 'trial_type',
-                          'State_1_reward', 'State_2_reward', 'State_3_reward', 'State_4_reward',
-                          'State_1_shock', 'State_2_shock', 'State_3_shock', 'State_4_shock']
+                          'State_1_shock', 'State_2_shock']
         self.response_data = dict(zip(self.data_keys, [None for i in self.data_keys]))
 
         # Save file information
@@ -220,7 +224,12 @@ class ReplayExperiment(object):
         self.response_phases = self.config['response keys']['response_phases']  # levels of the tree
 
         # Set up parallel port
-        self.parallel_port = ParallelPort(port=888)
+
+        # File to save triggers
+        self.trigger_record_file = open('{0}/{1}_Subject{2}_{3}_triggers.txt'.format(self.save_folder, self.save_prefix, self.subject_id,
+                                                                    data.getDateStr()), 'w')
+
+        self.parallel_port = ParallelPort(port=888, trigger_record_file=self.trigger_record_file)
         self.n_shocks = self.config[self.durations]['n_shocks']
         self.shock_delay = self.config[self.durations]['shock_delay']
 
@@ -269,6 +278,7 @@ class ReplayExperiment(object):
         with open(stim_fname, 'wb') as f:
             f.write(str(self.stimuli))
 
+
         random.shuffle(self.stimuli)  # make sure stimuli are randomly assigned to states
 
         # State selection images
@@ -288,7 +298,9 @@ class ReplayExperiment(object):
 
         # Image to display shock outcomes
         self.outcome_image = visual.ImageStim(win=self.win, size=self.config['image sizes']['size_outcome_image'],
-                                              image='Stimuli/shock.png', pos=(0, 7))
+                                              image=self.config['stimuli']['shock'], pos=(0, 7))
+        self.outcome_image_noshock = visual.ImageStim(win=self.win, size=self.config['image sizes']['size_outcome_image_noshock'],
+                                              image=self.config['stimuli']['noshock'], pos=(0, 7))
         # State image
         self.display_image = visual.ImageStim(win=self.win, size=self.config['image sizes']['size_display_image'])
         # End state image in test phase
@@ -371,11 +383,7 @@ class ReplayExperiment(object):
 
         """
 
-        print self.reward_value
-        print self.max_reward
-        self.grand_instructions(['End of experiment\n'
-                                 'You collected {0}% of the maximum available rewards'.format(
-            np.round(float(self.reward_value) / self.max_reward) * 100)])
+        self.grand_instructions(['End of experiment\n'])
         self.win.flip()
         core.wait(10)
 
@@ -513,6 +521,7 @@ class ReplayExperiment(object):
                             # self.save_json(trial + 1, 0, 'Rest', False, None, None, None, self.subject_id,
                             #                stopped='Space')
                             core.quit()
+                            self.trigger_record_file.close()
 
                         # get selected state
                         phase = len(moves)
@@ -526,7 +535,7 @@ class ReplayExperiment(object):
                             pos = self.state_selection_dict[selected_state]
                             pos_selected.append(pos)
                             current_state = selected_state
-                        except:  # if the chosen key doesn't exist in the dictionary for this phase
+                        except Exception as e:  # if the chosen key doesn't exist in the dictionary for this phase
                             pass
 
                     # if not monitoring_saved['Training']:
@@ -553,6 +562,10 @@ class ReplayExperiment(object):
         Returns:
 
         """
+
+        # Shuffle test trial info
+
+        trial_info = trial_info.sample(frac=1)
 
         self.send_trigger(0, False)
 
@@ -618,6 +631,7 @@ class ReplayExperiment(object):
         for i in range(n_trials):  # TRIAL LOOP - everything in here is repeated each trial
 
             print "Trial {0} / {1}".format(i + 1, n_trials)
+            self.trigger_record_file.write("Trial {0} / {1}".format(i + 1, n_trials))
 
             self.send_trigger(0, False)
 
@@ -658,9 +672,10 @@ class ReplayExperiment(object):
                 # get reward values
                 outcome = [''] * (self.matrix.shape[0] - (self.reward_info.shape[1] - 1))
                 outcome += self.reward_info[[c for c in self.reward_info.columns if 'reward' in c]].iloc[i, :].tolist()
-                shock_outcome = [0] * (self.matrix.shape[0] - (self.shock_info.shape[1] - 1))
+                shock_outcome = [None] * (self.matrix.shape[0] - (self.shock_info.shape[1] - 1))
                 shock_outcome += self.shock_info[[c for c in self.shock_info.columns if 'shock' in c]].iloc[i,
                                  :].tolist()
+                print shock_outcome
                 # shock_outcome = [1] * self.matrix.shape[0]
 
             # Default values for responses in case the subject makes no response
@@ -685,11 +700,12 @@ class ReplayExperiment(object):
             moves = []
             moves_states = []
             pos_selected = []  # image positions that have been selected - these are faded out on the grid
+            too_few_moves = False
 
             # Identifies and shows valid trajectories - used for testing
             if self.testing_mode:
                 if not test:
-                    end_state = np.random.randint(7, 11)
+                    end_state = np.random.randint(5, 7)
                 while not moves_found:
                     random.shuffle(test_moves)
                     moves_to_enter, _ = self.test_moves(start_state, end_state)
@@ -704,16 +720,9 @@ class ReplayExperiment(object):
             # Make sure the start state image is reset to the center of the screen
             self.display_image.setPos((0, 0))
 
-            # Randomly generate outcome only states
-            # These are dependent on outcomes expreienced by the participant - we don't want to display one after a shock
-            if not test and np.random.randint(100) <= self.config['outcomes']['percentage_outcome_only'] \
-                    and not previously_shocked:
-                trial_type = 1
-                outcome_type = 'outcome_only'
-            else:
-                trial_type = 0
+            trial_type = trial_info['trial_type'][i]
 
-                # Outcome only trials outcome state
+            # Outcome only trials outcome state
             outcome_state = trial_info['end_state'][i]
 
             # Trigger dict - lets us know whether we've sent triggers yet
@@ -894,19 +903,24 @@ class ReplayExperiment(object):
                         # Validate moves
                         if not moves_validated:
                             valid_moves = self.validate_moves([0] + moves)
+                            moves_validated = True
+                            if len(moves) < self.n_moves: too_few_moves = True
+
 
                         # Show generated moves and warning if too few moves entered
-                        if len(moves) < self.n_moves:
+                        if too_few_moves:
 
                             if test:
                                 self.main_text.text = "Too few moves entered"
                                 self.main_text.draw()
 
                             else:
-                                if moves is None:
+                                if len(moves) < self.n_moves:
                                     self.outcome_text.text = "Too few moves entered"
                                     self.outcome_text.draw()
                                     _, moves = self.test_moves(0, outcome_state)
+                                    moves = moves[1:]
+                                    move_rts = [np.nan] * len(moves)
                                     outcome_type = 'too_few_moves'
 
                                 self.show_move_sequence(moves, change_times[4], change_times[5], t, outcome,
@@ -920,10 +934,12 @@ class ReplayExperiment(object):
                                 self.main_text.draw()
 
                             else:
-                                if moves is None:
+                                if not len(moves):
                                     self.outcome_text.text = "Wrong moves entered"
                                     self.outcome_text.draw()
                                     _, moves = self.test_moves(0, outcome_state)
+                                    moves = moves[1:]
+                                    move_rts = [np.nan] * len(moves)
                                     outcome_type = 'invalid_moves'
 
                                 self.show_move_sequence(moves, change_times[4], change_times[5], t, outcome,
@@ -979,9 +995,9 @@ class ReplayExperiment(object):
                 # If the trial has ended, save data to csv
                 if not continue_trial:
 
-                    if not test and valid_moves and len(moves) == self.n_moves:
-                        self.reward_value += float(outcome[moves[-1]])  # add reward to total
-                        print "Current accumulated reward = {0}".format(self.reward_value)
+                    # if not test and valid_moves and len(moves) == self.n_moves:
+                    #     self.reward_value += float(outcome[moves[-1]])  # add reward to total
+                    #     print "Current accumulated reward = {0}".format(self.reward_value)
 
                     # Record whether they got shocked
                     if len(moves) and shock_outcome[moves[-1]]:
@@ -999,25 +1015,25 @@ class ReplayExperiment(object):
                         for n in range(0, 3):
                             self.response_data['State_{0}'.format(n + 1)] = np.nan
                             self.response_data['RT_{0}'.format(n + 1)] = np.nan
-                        self.response_data['Reward_received'] = outcome_only
                         self.response_data['Shock_received'] = shock_only
                     else:
+                        print moves
                         for n, state in enumerate(moves):
+                            print n, state
                             self.response_data['State_{0}'.format(n + 1)] = state
                             self.response_data['RT_{0}'.format(n + 1)] = move_rts[n]
                         if len(moves) == self.n_moves:
-                            self.response_data['Reward_received'] = outcome[state]
+                            print shock_outcome[state]
                             self.response_data['Shock_received'] = shock_outcome[state]
                         else:
-                            self.response_data['Reward_received'] = np.nan
                             self.response_data['Shock_received'] = np.nan
                     self.response_data['trial_type'] = trial_type
-                    for i in range(4):
-                        self.response_data['State_{0}_reward'.format(i + 1)] = outcome[i + 7]
-                        self.response_data['State_{0}_shock'.format(i + 1)] = shock_outcome[i + 7]
+                    for i in range(2):
+                        self.response_data['State_{0}_shock'.format(i + 1)] = shock_outcome[i + 5]
                     self.response_data['outcome_type'] = outcome_type
 
                     if not test:
+                        print self.response_data
                         csvWriter([self.response_data[category] for category in self.data_keys])  # Write data
                     else:
                         # In the test phase, figure out whether they got to the correct state
@@ -1041,6 +1057,10 @@ class ReplayExperiment(object):
                                                                    None, None, None, self.subject_id, stopped='Space')
                     event.waitKeys(['space', ' ', '1'])
                     self.send_trigger(0, False)
+                    self.trigger_dict = {'Planning': False, 'Move_entering': False, 'State_0': False, 'State_1': False,
+                                         'State_2': False, 'NoShock': False,
+                                         'State_3': False, 'Shock': False, 'Rest': False, 'Outcome_only_warning': False,
+                                         'Outcome_only_outcome': False}
                     self.clock.reset()
 
                 # quit if subject pressed scape
@@ -1049,6 +1069,7 @@ class ReplayExperiment(object):
                     #     self.save_json(i + 1, len(trial_info), 'Escape', valid_moves, None, None, None, self.subject_id,
                     #                    stopped='Escape')
                     core.quit()
+                    self.trigger_record_file.close()
 
 
         return False
@@ -1154,6 +1175,7 @@ class ReplayExperiment(object):
             self.send_trigger(self.config['triggers']['shock_outcome'], self.trigger_dict['Shock'])
             self.trigger_dict['Shock'] = True
         elif t > shock_time and shock == 0:  # Send trigger for no shock outcome
+            self.outcome_image_noshock.draw()
             self.send_trigger(self.config['triggers']['no_shock_outcome'], self.trigger_dict['NoShock'])
             self.trigger_dict['NoShock'] = True
 
@@ -1243,6 +1265,7 @@ class ReplayExperiment(object):
             key = event.waitKeys(keyList=['space', 'escape', 'esc', '1'])
             if key[0] in ['escape', 'esc']:
                 core.quit()
+                self.trigger_record_file.close()
 
     def create_matrix(self):
 
@@ -1254,6 +1277,8 @@ class ReplayExperiment(object):
         """
 
         matrix = np.loadtxt(self.config['directories']['matrix'])
+
+        print matrix
 
         matrix_keys = matrix.astype(int).astype(str)
         keys = ['up', 'down', 'left', 'right']

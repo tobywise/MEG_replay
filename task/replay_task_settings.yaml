@@ -49,7 +49,7 @@ directories:
   arrow_path: 'Stimuli/Arrows'
   matrix: 'Task_information/transition_matrix.txt'
   trial_info: 'Task_information/trial_info.csv'
-  trial_info_test: 'Task_information/trial_info_test.csv'
+  trial_info_test: 'Task_information/trial_info.csv'
   main_instructions: 'Instructions/instructions.txt'
   training_instructions: 'Instructions/training_instructions.txt'
   task_instructions: 'Instructions/task_instructions.txt'
@@ -58,14 +58,18 @@ filenames:
   save_prefix: 'replay_task_behavioural'
 response keys:
   response_keys: ['1', '2', '3', '4']
-  response_phases: [0, 0, 1, 1, 1, 1, 2, 2, 2, 2]
+  response_phases: [0, 0, 1, 1, 2, 2]
 image sizes:
   size_image_size: !!python/tuple [6, 6]  # Size of the state image stimuli
   size_outcome_image: !!python/tuple [2, 3]  #
+  size_outcome_image_noshock: !!python/tuple [3, 3]  #
   size_display_image: !!python/tuple [11, 11]  #
   size_arrow_display: !!python/tuple [2, 3]  # Size of the arrow stimuli
   state_selection_spacing: 6
   size_selection_image: !!python/tuple [6, 6]
+stimuli:
+  shock: 'Stimuli/shock.png'
+  noshock: 'Stimuli/noshock.png'
 fonts:
   font_path: 'fonts/OpenSans-Regular.ttf'
   font_name: 'Open Sans'

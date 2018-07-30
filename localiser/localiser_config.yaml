@@ -7,7 +7,7 @@ durations:
   text_jitter: 0.3  #
 task_settings:
   n_trials: 150
-  n_stimuli: 11
+  n_stimuli: 7
   n_blocks: 6
   percentage_faded: 30
   percentage_null: 7
