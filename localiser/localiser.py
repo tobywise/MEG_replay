@@ -91,6 +91,11 @@ class Localiser(object):
         self.n_correct = 0
         self.possible_correct = 0
 
+        self.tp = 0
+        self.tn = 0
+        self.fp = 0
+        self.fn = 0
+
         # Create the data file
         self.data_keys = ['True_answer', 'Response', 'Image_idx']
         self.save_folder = self.config['directories']['saved_data']
@@ -198,11 +203,18 @@ class Localiser(object):
             if key and faded:
                 print "Key pressed, correct answer"
                 self.n_correct += 1
+                self.tp += 1
             elif key and not faded:
                 print "Key pressed, incorrect answer"
                 self.n_correct -= 1
+                self.fp += 1
+            elif not key and faded:
+                self.fn += 1
+            elif not key and not faded:
+                self.tn += 1
 
             print "Number correct = {0}".format(self.n_correct)
+            print "Accuracy = {0}".format((self.tp + float(self.tn)) / (self.tp + self.fp + self.fn + self.tn))
 
             # Fixation
             self.fixation.draw()
