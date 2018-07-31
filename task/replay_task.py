@@ -727,12 +727,12 @@ class ReplayExperiment(object):
 
             # Trigger dict - lets us know whether we've sent triggers yet
             self.trigger_dict = {'Planning': False, 'Move_entering': False, 'State_0': False, 'State_1': False,
-                            'State_2': False, 'NoShock': False,
+                            'State_2': False, 'NoShock': False, 'Trial_start': False,
                             'State_3': False, 'Shock': False, 'Rest': False, 'Outcome_only_warning': False,
                             'Outcome_only_outcome': False}
 
 
-            if not i % self.trials_per_block and self.MEG_mode:
+            if not i % self.trials_per_block and self.MEG_mode and not test:
                 if i == 0:
                     self.grand_instructions(["We are about to start the experiment"])
                 else:
@@ -743,6 +743,8 @@ class ReplayExperiment(object):
             self.clock.reset()
 
             # RUN THE TRIAL
+
+            self.send_trigger(74, self.trigger_dict['Trial_start'])
 
             while continue_trial:
 
@@ -786,7 +788,7 @@ class ReplayExperiment(object):
                                           self.trigger_dict['Outcome_only_outcome'])
                         self.trigger_dict['Outcome_only_outcome'] = True
 
-                        if self.MEG_mode:
+                        if self.MEG_mode and self.photodiode:
                             if change_times[1] < t < change_times[1] + 0.5:
                                 self.photodiode_square.fillColor = 'white'
                                 self.photodiode_square.draw()
@@ -818,7 +820,7 @@ class ReplayExperiment(object):
                         self.send_trigger(self.config['triggers']['planning'], self.trigger_dict['Planning'])
                         self.trigger_dict['Planning'] = True
 
-                        if self.MEG_mode:
+                        if self.MEG_mode and self.photodiode:
                             if change_times[0] < t < change_times[0] + 0.5:
                                 self.photodiode_square.fillColor = 'white'
                                 self.photodiode_square.draw()
@@ -835,7 +837,7 @@ class ReplayExperiment(object):
                         self.send_trigger(self.config['triggers']['move_entering'], self.trigger_dict['Move_entering'])
                         self.trigger_dict['Move_entering'] = True
 
-                        if self.MEG_mode:
+                        if self.MEG_mode and self.photodiode:
                             if change_times[1] < t < change_times[1] + 0.5:
                                 self.photodiode_square.fillColor = 'white'
                                 self.photodiode_square.draw()
@@ -885,7 +887,7 @@ class ReplayExperiment(object):
 
                         event.clearEvents()
 
-                        if self.MEG_mode:
+                        if self.MEG_mode and self.photodiode:
                             if change_times[2] < t < change_times[2] + 0.5:
                                 self.photodiode_square.fillColor = 'white'
                                 self.photodiode_square.draw()
@@ -978,7 +980,7 @@ class ReplayExperiment(object):
                         self.send_trigger(self.config['triggers']['rest'], self.trigger_dict['Rest'])
                         self.trigger_dict['Rest'] = True
 
-                        if self.MEG_mode:
+                        if self.MEG_mode and self.photodiode:
                             if change_times[4] < t < change_times[4] + 0.5:
                                 self.photodiode_square.fillColor = 'white'
                                 self.photodiode_square.draw()
@@ -1212,7 +1214,7 @@ class ReplayExperiment(object):
                 self.send_trigger((n + 1) * 2, self.trigger_dict['State_{0}'.format(n)])
                 self.trigger_dict['State_{0}'.format(n)] = True
 
-                if self.MEG_mode:
+                if self.MEG_mode and self.photodiode:
                     if start_time < t < start_time + 0.5:
                         self.photodiode_square.fillColor = 'white'
                         self.photodiode_square.draw()
