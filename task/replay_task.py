@@ -666,7 +666,7 @@ class ReplayExperiment(object):
                 outcome = [''] * (self.matrix.shape[0] - (self.reward_info.shape[1] - 1))
                 outcome += ['Incorrect'] * (self.matrix.shape[0] - len(outcome))
                 outcome[end_state] = 'Correct'
-                shock_outcome = [0] * self.matrix.shape[0]
+                shock_outcome = [None] * self.matrix.shape[0]
 
             else:
                 # get reward values
