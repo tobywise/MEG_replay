@@ -258,11 +258,27 @@ class Localiser(object):
             self.win.flip()
             core.wait(1)
 
+    def run_resting(self):
+
+        for i in range(10):
+
+            self.fixation.draw()
+
+            self.parallel_port.setData(30)
+            self.parallel_port.setData(0)
+
+            core.wait(8)
+
     def run_task(self):
 
         # Welcome screen
         self.instructions("Welcome to the task", fixation=False)
         self.instructions("We are about to begin, please keep your head still until the next break")
+
+
+        # Resting
+        self.run_resting()
+        self.instructions("We are now starting the real task, get ready to spot the faded images", fixation=False)
 
         # Get location of stimuli
         stimuli_location = self.config['directories']['stimuli_path']
@@ -319,6 +335,8 @@ class Localiser(object):
 
             # self.instructions("Take a break", fixation=False)
             self.instructions("We are about to begin, please keep your head still until the next break")
+
+        self.run_resting()
 
         # End screen
         self.instructions("End of task, thank you for participating!\n\n"
