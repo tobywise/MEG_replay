@@ -8,7 +8,7 @@ durations:
 task_settings:
   n_trials: 150
   n_stimuli: 7
-  n_blocks: 6
+  n_blocks: 5
   percentage_faded: 30
   percentage_null: 7
 image_sizes:
