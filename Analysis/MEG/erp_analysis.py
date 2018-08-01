@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from mne.preprocessing import ICA, create_eog_epochs
 import numpy as np
 import os
-
+import pandas as pd
 
 """
 PREPROCESSING
@@ -99,7 +99,6 @@ ERP analysis
 # Read in the epoched data if you need to
 epochs = mne.read_epochs(os.path.join(data_dir, 'epoched_data-epo.fif.gz'))
 
-import pandas as pd
 behaviour = pd.read_csv(os.path.join(behavioural_dir, behavioural_id, behaviour_file))
 tt = behaviour['trial_type'].values # trial type
 #
@@ -200,33 +199,33 @@ plt.savefig('/Users/dancingdiva12/Desktop/UCL/Research Project/thesis/figures/{0
 
 
 # Load behaviour data and recode things
-behavioural = pd.read_csv(r'/Users/dancingdiva12/Desktop/Behavioral Data')
-behavioural.reset_index()
+behaviour.reset_index()
 trial_info = pd.read_csv('task/Task_information/trial_info.csv')
-behavioural = pd.merge(behavioural, trial_info, on='trial_number')
+behaviour = pd.merge(behaviour, trial_info, on='trial_number')
 
-behavioural['State_3'][behavioural['Reward_received'].isnull()] = behavioural.end_state
-sel = behavioural['Reward_received'].isnull()
+behaviour['State_3'][behaviour['Reward_received'].isnull()] = behaviour.end_state
+sel = behaviour['Reward_received'].isnull()
 
-behavioural['reward'] = np.nan
-behavioural['reward'][behavioural['State_3'] == 7] = behavioural['State_1_reward'][behavioural['State_3'] == 7]
-behavioural['reward'][behavioural['State_3'] == 8] = behavioural['State_2_reward'][behavioural['State_3'] == 8]
-behavioural['reward'][behavioural['State_3'] == 9] = behavioural['State_3_reward'][behavioural['State_3'] == 9]
-behavioural['reward'][behavioural['State_3'] == 10] = behavioural['State_4_reward'][behavioural['State_3'] == 10]
-behavioural['reward'][~sel] = behavioural['Reward_received']
+behaviour['reward'] = np.nan
+behaviour['reward'][behaviour['State_3'] == 7] = behaviour['State_1_reward'][behaviour['State_3'] == 7]
+behaviour['reward'][behaviour['State_3'] == 8] = behaviour['State_2_reward'][behaviour['State_3'] == 8]
+behaviour['reward'][behaviour['State_3'] == 9] = behaviour['State_3_reward'][behaviour['State_3'] == 9]
+behaviour['reward'][behaviour['State_3'] == 10] = behaviour['State_4_reward'][behaviour['State_3'] == 10]
+behaviour['reward'][~sel] = behaviour['Reward_received']
 
-behavioural['shock'] = np.nan
-behavioural['shock'][behavioural['State_3'] == 7] = behavioural['0_shock'][behavioural['State_3'] == 7]
-behavioural['shock'][behavioural['State_3'] == 8] = behavioural['1_shock'][behavioural['State_3'] == 8]
-behavioural['shock'][behavioural['State_3'] == 9] = behavioural['2_shock'][behavioural['State_3'] == 9]
-behavioural['shock'][behavioural['State_3'] == 10] = behavioural['3_shock'][behavioural['State_3'] == 10]
-behavioural['shock'][~sel] = behavioural['Shock_received']
+behaviour['shock'] = np.nan
+behaviour['shock'][behaviour['State_3'] == 7] = behaviour['0_shock'][behaviour['State_3'] == 7]
+behaviour['shock'][behaviour['State_3'] == 8] = behaviour['1_shock'][behaviour['State_3'] == 8]
+behaviour['shock'][behaviour['State_3'] == 9] = behaviour['2_shock'][behaviour['State_3'] == 9]
+behaviour['shock'][behaviour['State_3'] == 10] = behaviour['3_shock'][behaviour['State_3'] == 10]
+behaviour['shock'][~sel] = behaviour['Shock_received']
 
 # Drop the first trial
-behavioural = behavioural[1:]
+behaviour = behaviour[1:]
+outcomes.drop(0)
 
 # Assign behavioural data to metadata attribute
-outcomes.metadata = behaviour.assign(Intercept=1)[1:]
+outcomes.metadata = behaviour.assign(Intercept=1)
 
 # Linear regression
 # The regression has two terms - the intercept (not interesting) and the reward level (interesting)
