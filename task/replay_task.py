@@ -1017,7 +1017,7 @@ class ReplayExperiment(object):
                     if test and self.move_entering_duration > self.config[self.durations]['move_entering_duration']:
                         self.move_entering_duration -= self.move_entering_duration_step
 
-                    if trial_info['trial_type'][i] == 1:
+                    if trial_type == 1:
                         for n in range(0, 3):
                             self.response_data['State_{0}'.format(n + 1)] = np.nan
                             self.response_data['RT_{0}'.format(n + 1)] = np.nan
