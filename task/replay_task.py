@@ -745,6 +745,7 @@ class ReplayExperiment(object):
             # RUN THE TRIAL
 
             self.send_trigger(74, self.trigger_dict['Trial_start'])
+            self.send_trigger(74, self.trigger_dict['Trial_start'])
 
             while continue_trial:
 
