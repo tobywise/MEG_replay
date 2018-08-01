@@ -720,7 +720,10 @@ class ReplayExperiment(object):
             # Make sure the start state image is reset to the center of the screen
             self.display_image.setPos((0, 0))
 
-            trial_type = trial_info['trial_type'][i]
+            if test:
+                trial_type = 0
+            else:
+                trial_type = trial_info['trial_type'][i]
 
             # Outcome only trials outcome state
             outcome_state = trial_info['end_state'][i]
