@@ -1,0 +1,1 @@
+['Stimuli\\car.jpg', 'Stimuli\\Cat.jpeg', 'Stimuli\\cheetah.jpg', 'Stimuli\\coffee.jpg', 'Stimuli\\cookies.jpg', 'Stimuli\\desert.jpg', 'Stimuli\\dog.jpeg']
