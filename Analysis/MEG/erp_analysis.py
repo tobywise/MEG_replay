@@ -2,6 +2,7 @@ from mne.io import read_raw_ctf
 import mne
 import matplotlib.pyplot as plt
 from mne.preprocessing import ICA, create_eog_epochs
+from scipy.stats import ttest_1samp
 import numpy as np
 import os
 import pandas as pd
@@ -173,6 +174,8 @@ shock_outcomes.save(os.path.join(data_dir, 'shock_outcomes-epo.fif.gz'))
 Look at some ERFs!
 """
 
+shock_outcomes = mne.read_epochs(os.path.join(data_dir, 'shock_outcomes-epo.fif.gz'))
+
 # Get the evoked response for shock outcomes
 shock_evoked = shock_outcomes.average()
 shock_evoked.plot_joint(ts_args=dict(time_unit='s'), topomap_args=dict(time_unit='s'))
@@ -259,22 +262,132 @@ for root, dir, files in os.walk(subject_dir):
         if 'ave' in f and 'shock' in f:
             evokeds.append(os.path.join(root, f))
 
-evokeds = [mne.read_evokeds(i)[0] for i in evokeds]
+evokeds = [mne.read_evokeds(i)[0] for i in evokeds] * 2
 #evokeds = mne.combine_evoked(evokeds, 'equal')
 
 grand_average = mne.combine_evoked(evokeds, 'equal')
 
 grand_average.plot_joint(ts_args=dict(time_unit='s'), topomap_args=dict(time_unit='s'))
 
-subject_data = [i.data for i in evokeds]
-subject_data = np.dstack(subject_data)
+subject_data = [np.array([i.data.T]) for i in evokeds]
+subject_data = np.concatenate(subject_data)
 
-from scipy.stats import ttest_1samp
-ps = ttest_1samp(subject_data, 0, axis=2)[1]
 
+###########################
+# OLD CONSERVATIVE METHOD #
+###########################
+
+ps = ttest_1samp(subject_data, 0, axis=0)[1]
 reject_H0, fdr_pvals = fdr_correction(ps)
-
 grand_average.plot_image(mask=reject_H0, time_unit='s')
+
+############################
+# LESS CONSERVATIVE METHOD #
+############################
+
+# Get connectivity matrix (represents spatial relationship between sensors)
+connectivity, ch_names = mne.channels.find_ch_connectivity(evokeds[0].info, ch_type='mag')
+
+# Remove missing channels
+idx = []
+for n, i in enumerate(ch_names):
+    if i + '-2910' in evokeds[0].info['ch_names']:
+        idx.append(n)
+mask = np.zeros(connectivity.shape[0], dtype=bool)
+mask[idx] = True
+connectivity = connectivity[mask, :]
+connectivity = connectivity[:, mask]
+
+# HERE ARE TWO METHDOS OF THRESHOLDING
+
+# METHOD A
+# Relatively quick - try this first
+
+T_obs, clusters, cluster_p_values, H0 = \
+    mne.stats.spatio_temporal_cluster_1samp_test(subject_data, n_permutations=1000, threshold=None, n_jobs=4,
+                                             connectivity=connectivity)
+
+# METHOD B
+# Can be very slow
+threshold_tfce = dict(start=.2, step=.2)
+T_obs, clusters, cluster_p_values, H0 = \
+    mne.stats.spatio_temporal_cluster_1samp_test(subject_data, n_permutations=1000, threshold=threshold_tfce, n_jobs=4,
+                                             connectivity=connectivity)
+
+
+# Plot significant clusters
+good_cluster_inds = []
+mask = np.zeros_like(T_obs, dtype=bool)
+for n, (c, p_val) in enumerate(zip(clusters, cluster_p_values)):
+    if p_val <= 0.05:
+        mask[c] = True
+        good_cluster_inds.append(n)
+
+grand_average.plot_image(mask=mask.T, time_unit='s')
+
+# PLOT RESPONSES AT SENSORS CONTRIBUTING TO EACH CLUSTER (if there are any clusters...)
+# This is all taken from this example https://mne-tools.github.io/dev/auto_tutorials/plot_stats_spatio_temporal_cluster_sensors.html
+
+from mne.viz import plot_topomap
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from mne.viz import plot_compare_evokeds
+
+pos = mne.find_layout(grand_average.info).pos[idx, :]
+
+# loop over clusters
+for i_clu, clu_idx in enumerate(good_cluster_inds):
+    # unpack cluster information, get unique indices
+    time_inds, space_inds = np.squeeze(clusters[clu_idx])
+    ch_inds = np.unique(space_inds)
+    time_inds = np.unique(time_inds)
+
+    # get topography for F stat
+    f_map = T_obs[time_inds, ...].mean(axis=0)
+
+    # get signals at the sensors contributing to the cluster
+    sig_times = grand_average.times[time_inds]
+
+    # create spatial mask
+    mask = np.zeros((f_map.shape[0], 1), dtype=bool)
+    mask[ch_inds, :] = True
+
+    # initialize figure
+    fig, ax_topo = plt.subplots(1, 1, figsize=(10, 3))
+
+    # plot average test statistic and mark significant sensors
+    image, _ = plot_topomap(f_map, pos, mask=mask, axes=ax_topo, cmap='viridis',
+                            vmin=np.min, vmax=np.max, show=False)
+
+    # create additional axes (for ERF and colorbar)
+    divider = make_axes_locatable(ax_topo)
+
+    # add axes for colorbar
+    ax_colorbar = divider.append_axes('right', size='5%', pad=0.05)
+    plt.colorbar(image, cax=ax_colorbar)
+    ax_topo.set_xlabel(
+        'Averaged T-map ({:0.3f} - {:0.3f} s)'.format(*sig_times[[0, -1]]))
+
+    # add new axis for time courses and plot time courses
+    ax_signals = divider.append_axes('right', size='300%', pad=1.2)
+    title = 'Cluster #{0}, {1} sensor'.format(i_clu + 1, len(ch_inds))
+    if len(ch_inds) > 1:
+        title += "s (mean)"
+    # plot_compare_evokeds(grand_average, title=title, picks=ch_inds, axes=ax_signals,
+    #                      show=True, truncate_yaxis='max_ticks')
+    grand_average.plot(picks=ch_inds, axes=ax_signals, show=False)
+
+    # plot temporal cluster extent
+    ymin, ymax = ax_signals.get_ylim()
+    ax_signals.fill_betweenx((ymin, ymax), sig_times[0], sig_times[-1],
+                             color='orange', alpha=0.3)
+
+    # clean up viz
+    mne.viz.tight_layout(fig=fig)
+    fig.subplots_adjust(bottom=.05)
+    plt.show()
+
+
+############################################################################################################
 
 # REWARD
 
