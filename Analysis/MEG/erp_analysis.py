@@ -267,7 +267,7 @@ for root, dir, files in os.walk(subject_dir):
         if 'ave' in f and 'shock' in f:
             evokeds.append(os.path.join(root, f))
 
-evokeds = [mne.read_evokeds(i)[0] for i in evokeds] * 2
+evokeds = [mne.read_evokeds(i)[0] for i in evokeds]
 #evokeds = mne.combine_evoked(evokeds, 'equal')
 
 grand_average = mne.combine_evoked(evokeds, 'equal')
