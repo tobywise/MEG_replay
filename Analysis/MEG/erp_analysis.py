@@ -310,7 +310,7 @@ connectivity = connectivity[:, mask]
 
 # Use this to change the threshold
 from scipy import stats
-threshold = 0.05
+threshold = 0.01
 
 T_obs, clusters, cluster_p_values, H0 = \
     mne.stats.spatio_temporal_cluster_1samp_test(subject_data, n_permutations=1000,
@@ -329,7 +329,7 @@ T_obs, clusters, cluster_p_values, H0 = \
 good_cluster_inds = []
 mask = np.zeros_like(T_obs, dtype=bool)
 for n, (c, p_val) in enumerate(zip(clusters, cluster_p_values)):
-    if p_val <= 0.15 and len(mask[c]) > 200:
+    if p_val <= 0.05:
         mask[c] = True
         good_cluster_inds.append(n)
 
@@ -396,7 +396,6 @@ for i_clu, clu_idx in enumerate(good_cluster_inds):
     fig.subplots_adjust(bottom=.05)
     plt.show()
 
-
 ############################################################################################################
 ############################################################################################################
 
@@ -451,16 +450,13 @@ connectivity = connectivity[:, mask]
 
 # Use this to change the threshold
 from scipy import stats
-threshold = 0.05
+threshold = 0.01
 
 T_obs, clusters, cluster_p_values, H0 = \
     mne.stats.spatio_temporal_cluster_1samp_test(subject_data, n_permutations=1000,
                                                  threshold=-stats.t.ppf(threshold / 2., len(subject_data) - 1), n_jobs=4,
                                              connectivity=connectivity)
 
-T_obs, clusters, cluster_p_values, H0 = \
-    mne.stats.spatio_temporal_cluster_1samp_test(subject_data, n_permutations=1000, threshold=None, n_jobs=4,
-                                             connectivity=connectivity)
 
 # Plot significant clusters
 good_cluster_inds = []
