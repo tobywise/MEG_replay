@@ -308,23 +308,28 @@ connectivity = connectivity[:, mask]
 # METHOD A
 # Relatively quick - try this first
 
+# Use this to change the threshold
+from scipy import stats
+threshold = 0.05
+
 T_obs, clusters, cluster_p_values, H0 = \
-    mne.stats.spatio_temporal_cluster_1samp_test(subject_data, n_permutations=1000, threshold=None, n_jobs=4,
+    mne.stats.spatio_temporal_cluster_1samp_test(subject_data, n_permutations=1000,
+                                                 threshold=-stats.t.ppf(threshold / 2., len(subject_data) - 1), n_jobs=4,
                                              connectivity=connectivity)
 
 # METHOD B
 # Can be very slow
-threshold_tfce = dict(start=.2, step=.2)
-T_obs, clusters, cluster_p_values, H0 = \
-    mne.stats.spatio_temporal_cluster_1samp_test(subject_data, n_permutations=1000, threshold=threshold_tfce, n_jobs=4,
-                                             connectivity=connectivity)
+# threshold_tfce = dict(start=.2, step=.2)
+# T_obs, clusters, cluster_p_values, H0 = \
+#     mne.stats.spatio_temporal_cluster_1samp_test(subject_data, n_permutations=1000, threshold=threshold_tfce, n_jobs=4,
+#                                              connectivity=connectivity)
 
 
 # Plot significant clusters
 good_cluster_inds = []
 mask = np.zeros_like(T_obs, dtype=bool)
 for n, (c, p_val) in enumerate(zip(clusters, cluster_p_values)):
-    if p_val <= 0.05:
+    if p_val <= 0.15 and len(mask[c]) > 200:
         mask[c] = True
         good_cluster_inds.append(n)
 
@@ -443,6 +448,16 @@ connectivity = connectivity[mask, :]
 connectivity = connectivity[:, mask]
 
 # THRESHOLDING
+
+# Use this to change the threshold
+from scipy import stats
+threshold = 0.05
+
+T_obs, clusters, cluster_p_values, H0 = \
+    mne.stats.spatio_temporal_cluster_1samp_test(subject_data, n_permutations=1000,
+                                                 threshold=-stats.t.ppf(threshold / 2., len(subject_data) - 1), n_jobs=4,
+                                             connectivity=connectivity)
+
 T_obs, clusters, cluster_p_values, H0 = \
     mne.stats.spatio_temporal_cluster_1samp_test(subject_data, n_permutations=1000, threshold=None, n_jobs=4,
                                              connectivity=connectivity)
