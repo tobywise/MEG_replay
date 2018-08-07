@@ -355,7 +355,7 @@ for i_clu, clu_idx in enumerate(good_cluster_inds):
     fig, ax_topo = plt.subplots(1, 1, figsize=(10, 3))
 
     # plot average test statistic and mark significant sensors
-    image, _ = plot_topomap(f_map, pos, mask=mask, axes=ax_topo, cmap='viridis',
+    image, _ = plot_topomap(f_map, pos, mask=mask, axes=ax_topo, cmap='coolwarm',
                             vmin=np.min, vmax=np.max, show=False)
 
     # create additional axes (for ERF and colorbar)
