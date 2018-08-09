@@ -93,7 +93,7 @@ def preproc_meg(data_dir, session_id, task=True, n_loc=6, n_stim=11):
         task_dropped = {'trial': [], 'event_id': []}
 
         task_epochs = mne.Epochs(task_raw, task_events, tmin=0, tmax=8, preload=True,
-                            reject=None, event_id=[30, 60])
+                            reject=None, event_id=[30])
         print(task_epochs)
 
         for n, i in enumerate(task_epochs.drop_log):
@@ -117,7 +117,7 @@ def preproc_meg(data_dir, session_id, task=True, n_loc=6, n_stim=11):
 
     print("ICA")
     ica = ICA(n_components=0.95, method='fastica',
-              random_state=0, max_iter=100).fit(localiser_epochs, decim=1, reject=None)
+              random_state=0, max_iter=100).fit(task_epochs, decim=1, reject=None)
     ica.plot_components()
 
     pp = PdfPages(os.path.join(output_dir, 'ICA.pdf'))
@@ -129,7 +129,7 @@ def preproc_meg(data_dir, session_id, task=True, n_loc=6, n_stim=11):
     ica.save(os.path.join(output_dir, 'meg-ica.fif.gz'))
 
     # detect EOG by correlation
-    eog_inds, scores = ica.find_bads_eog(localiser_epochs)
+    eog_inds, scores = ica.find_bads_eog(task_epochs)
     print(eog_inds)
 
     print("SAVING")

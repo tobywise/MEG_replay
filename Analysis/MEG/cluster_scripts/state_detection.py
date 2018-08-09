@@ -118,14 +118,12 @@ if __name__ == '__main__':
     parser.add_argument("n_iter", type=int)
     args = parser.parse_args()
 
+    shifts = np.arange(-5, 6)
     np.random.seed(100)
 
     # LOAD EPOCHS
     subjectID = args.subject
     epochs = mne.read_epochs(r'/data/twise/{0}/post_ICA_localiser-epo.fif.gz'.format(subjectID))
-    # epochs.picks
-    # epochs.info['bads'] = ['MLT54-2910']
-    # epochs.drop_bad(dict(mag=5e-12, eog=20))
 
     # ar = AutoReject(n_jobs=4)
     # epochs_clean = ar.fit_transform(epochs.pick_types(meg=True))
@@ -140,7 +138,7 @@ if __name__ == '__main__':
     #####################################################################################
 
     # Get epoch data
-    X_raw = epochs_clean.get_data()[:, :, 30:60] # MEG signals: n_epochs, n_channels, n_times (exclude non MEG channels)
+    X_raw = epochs_clean.get_data()[:, :, :]  # MEG signals: n_epochs, n_channels, n_times (exclude non MEG channels)
     y_raw = epochs_clean.events[:, 2]  # Get event types
     # y_raw = np.array([i for n, i in enumerate(y_raw) if n not in drop_idx])
 
@@ -173,6 +171,8 @@ if __name__ == '__main__':
     # Mean scores across cross-validation splits
     mean_scores = np.mean(scores, axis=0)
     best_idx = np.where(mean_scores == mean_scores.max())[0][0]
+    best_idx = 33
+
     if best_idx < 5: best_idx = 5
 
     print("Best classification at index {0}, {1}ms".format(best_idx, (best_idx * 10) - 133))
@@ -191,29 +191,31 @@ if __name__ == '__main__':
     # ax.legend()
     # plt.tight_layout()
 
-
     ###############################################################################
     # OPTIMISE HYPERPARAMETERS USING 3 FOLD CV WITH DATA AND FEATURE AUGMENTATION #
     ###############################################################################
 
     # Get epoch data
-    X_raw = epochs_clean.get_data()[:, :, 30:60] # MEG signals: n_epochs, n_channels, n_times (exclude non MEG channels)
-    X_raw = np.hstack([X_raw, epochs.get_data()[np.array([i for i in range(X_raw.shape[0]) if i not in drop_idx]), 302:305, 30:60]])
+    X_raw = epochs_clean.get_data()[:, :, :]  # MEG signals: n_epochs, n_channels, n_times (exclude non MEG channels)
+    # X_raw = np.hstack(
+    #     [X_raw, epochs.get_data()[np.array([i for i in range(X_raw.shape[0]) if i not in drop_idx]), 302:305, :]])
     y_raw = epochs_clean.events[:, 2]  # Get event types
 
     # select events and time period of interest
     event_selector = (y_raw < 23) | (y_raw == 99)
     X_raw = X_raw[event_selector, ...]
     y_raw = y_raw[event_selector]
+    X_raw = X_raw[:, 29:302, :]
 
     print("Number of unique events = {0}\n\nEvent types = {1}".format(len(np.unique(y_raw)),
                                                                       np.unique(y_raw)))
 
-    def cvlr(C, n_features, pupil_diff_thresh, threshold, X_raw=X_raw, y_raw=y_raw):
 
+    def cvlr(C, n_features, pupil_diff_thresh=None, threshold=None, X_raw=X_raw, y_raw=y_raw):
         n_features = int(n_features)
-        X, y = exclude_eyes(X_raw, y_raw, threshold=threshold, pupil_diff_thresh=pupil_diff_thresh, timepoints=10)
-        X = X[:, 29:302, best_idx-5:best_idx+5]
+        # X, y = exclude_eyes(X_raw, y_raw, threshold=threshold, pupil_diff_thresh=pupil_diff_thresh, timepoints=10)
+        X, y = (X_raw, y_raw)
+        X = X[:, 29:302, best_idx - 5:best_idx + 5]
         if X.shape[0] > 200:
 
             pca = UnsupervisedSpatialFilter(PCA(n_features), average=False)
@@ -225,11 +227,11 @@ if __name__ == '__main__':
             # clf = make_pipeline(StandardScaler(), LogisticRegression(multi_class='ovr', C=C, penalty='l2', tol=0.01))
 
             cv = KFold(3)  # CV
-            shifts = np.arange(-2, 3)  # Additional timepoints to use as features
+            shifts = np.arange(-4, 5)  # Additional timepoints to use as features
+            # shifts = [0]
             accuracy = []
 
             for n, (train_index, test_index) in enumerate(cv.split(pca_data[..., 0])):
-
                 print("Fold {0} / 3".format(n + 1))
 
                 # Add features + samples to X/y training data and test data
@@ -237,7 +239,7 @@ if __name__ == '__main__':
                 X_test, y_test = add_features(pca_data[test_index, :, :], shifts, y[test_index])
 
                 # Add samples to training data
-                X_train, y_train = augment_samples(X_train, np.arange(-2, 3), y_train)
+                # X_train, y_train = augment_samples(X_train, shifts, y_train)
 
                 # Fit the classifier to training data and predict on held out data
                 clf.fit(X_train[..., 5], y_train)  # X represents timepoints 5 either side of the best index
@@ -253,52 +255,18 @@ if __name__ == '__main__':
 
         return acc
 
+
     gp_params = {"alpha": 1e-5}
 
-    svcBO = BayesianOptimization(cvlr, {'C': (0.01, 50), 'n_features': (10, 150),
-                                        'pupil_diff_thresh': (0.05, 2), 'threshold': (0.05, 0.8)})
+    svcBO = BayesianOptimization(cvlr, {'C': (0.001, 50), 'n_features': (10, 150)})
     # svcBO.explore({'C': [0.001, 0.01, 0.1]})
 
-    svcBO.maximize(n_iter=args.n_iter)
+    svcBO.maximize(n_iter=100)
     print('-' * 53)
     print('Final Results')
     print('SVC: %f' % svcBO.res['max']['max_val'])
     print(svcBO.res['max']['max_params'])
 
-
-    ##############################################################################
-    # RELOAD DATA AND PREPROCESS WITH OPTIMAL PARAMETERS TO GET CONFUSION MATRIX #
-    ##############################################################################
-
-    # Get epoch data
-    X_raw = epochs.get_data()[:, :, 30:60] # MEG signals: n_epochs, n_channels, n_times
-    y_raw = epochs.events[:, 2]  # Get event types
-
-    # select events and time period of interest
-    event_selector = (y_raw < 23) | (y_raw == 99)
-    X_raw = X_raw[event_selector, ...]
-    y_raw = y_raw[event_selector]
-
-    # Remove trials where subject isn't looking at stimuli
-    print("{0} epochs before excluding trials".format(X_raw.shape[0]))
-    X_raw, y_raw = exclude_eyes(X_raw, y_raw, threshold=svcBO.res['max']['max_params']['threshold'],
-                                pupil_diff_thresh=svcBO.res['max']['max_params']['pupil_diff_thresh'], timepoints=10)
-    print("{0} epochs after excluding trials".format(X_raw.shape[0]))
-
-    # Select only MEG channels
-    X_raw = X_raw[:, 29:302, :]
-
-    print("Number of unique events = {0}\n\nEvent types = {1}".format(len(np.unique(y_raw)),
-                                                                      np.unique(y_raw)))
-
-    # PCA
-    pca = UnsupervisedSpatialFilter(PCA(int(svcBO.res['max']['max_params']['n_features'])), average=False)
-    pca_data = pca.fit_transform(X_raw)
-    X_raw = pca_data
-
-    clf = make_pipeline(StandardScaler(), LogisticRegression(multi_class='multinomial',
-                                                             C=svcBO.res['max']['max_params']['C'], penalty='l2',
-                                                             solver='saga', tol=0.01))
 
     # CONFUSION MATRIX - 5 FOLD CV WITH DATA AND FEATURE AUGMENTATION
 
@@ -306,19 +274,32 @@ if __name__ == '__main__':
     # Mixing training and testing data. We split into CV folds before adding samples
 
     # Select data at timepoint with best classification accuracy (plus neighbouring timepoints)
-    X_raw = pca_data[..., best_idx-5:best_idx+5]
+
+    # USE OPTIMISED VALUES
+
+    pca = UnsupervisedSpatialFilter(PCA(int(svcBO.res['max']['max_params']['n_features'])), average=False)
+    print(X_raw.shape)
+    pca_data = pca.fit_transform(X_raw)
+
+    # CLASSIFIER
+    # Logistic regression with L2 penalty, multi-class classification performed as one-vs-rest
+    # Data is transformed to have zero mean and unit variance before being passed to the classifier
+
+    clf = make_pipeline(StandardScaler(), LogisticRegression(multi_class='multinomial',
+                                                             C=svcBO.res['max']['max_params']['C'], penalty='l2',
+                                                             solver='saga', tol=0.01))
+
+    X_raw = pca_data[..., best_idx - 10:best_idx + 10]
 
     cv = KFold(5)  # CV
-    # shifts = np.arange(-2, 3)  # Additional timepoints to use as features
-    shifts = [0]
+    shifts = np.arange(-5, 6)  # Additional timepoints to use as features
+    # shifts = [0]
 
     conf_matrices = []
     accuracy = []
     ts_scores = []
 
-
     for n, (train_index, test_index) in enumerate(cv.split(X_raw[..., 0])):
-
         print("Fold {0} / 5".format(n + 1))
 
         # Add features + samples to X/y training data and test data
@@ -326,8 +307,7 @@ if __name__ == '__main__':
         X_test, y_test = add_features(X_raw[test_index, :, :], shifts, y_raw[test_index])
 
         # Add samples to training data
-        X_train, y_train = augment_samples(X_train, shifts, y_train)
-
+        # X_train, y_train = augment_samples(X_train, np.arange(-2, 2), y_train)
 
         # Fit the classifier to training data and predict on held out data
         clf.fit(X_train[..., 5], y_train)  # X represents timepoints 5 either side of the best index
@@ -354,38 +334,24 @@ if __name__ == '__main__':
     plt.savefig(r'/data/twise/{0}/confusion_matrix.pdf'.format(subjectID))
 
 
-    ###################
-    # REPLAY ANALYSIS #
-    ###################
-
     # DETECT STATES IN REST DATA
 
     task_data = r'/data/twise/{0}/post_ICA_task-epo.fif.gz'.format(subjectID)
     task_epochs = mne.read_epochs(task_data)
 
-
     # Get epoch data
-    task_X_raw = task_epochs.get_data()[:, 29:302, :] # MEG signals: n_epochs, n_channels, n_times
+    task_X_raw = task_epochs.get_data()[:, 29:302, :]  # MEG signals: n_epochs, n_channels, n_times
     task_y_raw = task_epochs.events[:, 2]  # Get event types
 
-
-
-    rest_times = task_epochs.events[:, 0]
-    rest_events = task_epochs.events[:, 2]
-    rest_times = rest_times[(rest_events == 30)]
-    rest_events = rest_events[(rest_events == 30)].astype(float)
-    rest_events /= 10
-
-
     # select events and time period of interest - 60 = planning, 30 = rest
-    planning_X = task_X_raw[task_y_raw == 60, :, :]
+    # planning_X = task_X_raw[task_y_raw == 60, :, :]
     rest_X = task_X_raw[task_y_raw == 30, :, :]
 
-    print("Number of planning trials = {0}\n" \
-          "Number of rest trials = {1}".format(planning_X.shape[0], rest_X.shape[0]))
+    # print("Number of planning trials = {0}\n" \
+    #       "Number of rest trials = {1}".format(planning_X.shape[0], rest_X.shape[0]))
 
     # PCA on planning and rest data
-    planning_X = pca.transform(planning_X)
+    print(rest_X.shape)
     rest_X = pca.transform(rest_X)
 
 
@@ -394,15 +360,16 @@ if __name__ == '__main__':
         X_augmented, y_augmented = add_features(X, shifts, y)
 
         if samples:
-            X_augmented, y_augmented = augment_samples(X_augmented, np.arange(-2, 3), y_augmented)
+            # X_augmented, y_augmented = augment_samples(X_augmented, np.arange(-1, 1), y_augmented)
+            X_augmented, y_augmented = augment_samples(X_augmented, [0], y_augmented)
 
         return X_augmented, y_augmented
 
+
     ## AUGMENTATION
-    planning_X, planning_y = augmentation(planning_X, None)  # planning
+    # planning_X, planning_y = augmentation(planning_X, None)  # planning
     rest_X, rest_y = augmentation(rest_X, None)  # rest
     X_augmented, y_augmented = augmentation(X_raw, y_raw, samples=True)
-
 
     # FIT CLASSIFIER ON FULL LOCALISER DATA
 
@@ -412,13 +379,13 @@ if __name__ == '__main__':
     planning_preds = []
     rest_preds = []
 
-    for i in range(planning_X.shape[0]):  # predict on every trial
-        planning_pred = clf_full.predict_proba(planning_X[i, ...].T)
-        planning_preds.append(planning_pred)
+    # for i in range(planning_X.shape[0]):  # predict on every trial
+    #     planning_pred = clf_full.predict_proba(planning_X[i, ...].T)
+    #     planning_preds.append(planning_pred)
 
     for i in range(rest_X.shape[0]):  # predict on every trial
         rest_pred = clf_full.predict_proba(rest_X[i, ...].T)
         rest_preds.append(rest_pred)
 
     np.save(os.path.join('/data/twise/{0}/'.format(subjectID), '{0}_rest_states'.format(subjectID)), rest_preds)
-    np.save(os.path.join('/data/twise/{0}/'.format(subjectID), '{0}_planning_states'.format(subjectID)), planning_preds)
+    # np.save(os.path.join('/data/twise/{0}/'.format(subjectID), '{0}_planning_states'.format(subjectID)), planning_preds)
