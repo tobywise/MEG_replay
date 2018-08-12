@@ -74,6 +74,21 @@ print template.format('REWARD', reward.statistic, len(reward_betas) - 1, reward.
 print template.format('SHOCK', shock.statistic, len(shock_betas) - 1, shock.pvalue)
 print template.format('REWARD X SHOCK INTERACTION', interaction.statistic, len(interaction_betas) - 1, interaction.pvalue)
 
+### PLOTTING
+import seaborn as sns  # if you don't have seaborn you can use pip install seaborn in the terminal to install it
+import matplotlib.pyplot as plt
+
+result_df = pd.DataFrame({'Predictor': ['Reward'] * len(reward_betas) +
+                                       ['Shock'] * len(shock_betas) +
+                                       ['Reward X Shock'] * len(interaction_betas) ,
+                          'Beta coefficient': reward_betas + shock_betas + interaction_betas})
+
+sns.set_style("white")
+sns.barplot('Predictor', 'Beta coefficient', data=result_df, capsize=0.1, errwidth=1)
+plt.axhline(0, color='gray', linewidth=1, linestyle=':')
+# plt.text(-0.05, 1, "***")  # shows significance
+sns.despine()
+plt.title("Effect of reward and shock on switching behaviour")
 
 
 
