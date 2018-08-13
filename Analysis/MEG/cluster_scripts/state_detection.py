@@ -345,7 +345,7 @@ if __name__ == '__main__':
     task_y_raw = task_epochs.events[:, 2]  # Get event types
 
     # select events and time period of interest - 60 = planning, 30 = rest
-    planning_X = task_X_raw[task_y_raw == 74, :, :]
+    planning_X = task_X_raw[task_y_raw == 60, :, :]
     rest_X = task_X_raw[task_y_raw == 30, :, :]
 
     print("Number of planning trials = {0}\n" \
