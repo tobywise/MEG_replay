@@ -83,7 +83,7 @@ def preproc_meg(data_dir, session_id, task=True, n_loc=6, n_stim=11):
     localiser_events = mne.find_events(localiser_raw, stim_channel='UPPT001', shortest_event=1)
     if task:
         task_events = mne.find_events(task_raw, stim_channel='UPPT001', shortest_event=1, consecutive=True)
-        print task_events
+        print(task_events)
     reject = dict(mag=5e-9, eog=20)
 
     print("EPOCHING")
