@@ -4,14 +4,15 @@ import numpy as np
 import statsmodels.formula.api as smf
 from scipy.stats import ttest_1samp
 
-behavioural_dir ='/path/to/behavioural/files'
+behavioural_dir =r'C:\Users\Toby\Downloads\behav'
 trial_info = pd.read_csv('task/Task_information/trial_info.csv')
 
-behavioural_files = os.listdir(behavioural_dir)[:-3]
+behavioural_files = [i for i in os.listdir(behavioural_dir) if 'csv' in i]
 
 reward_betas = []
 shock_betas = []
 interaction_betas = []
+intercept_betas = []
 
 for i in behavioural_files:
 
@@ -45,20 +46,21 @@ for i in behavioural_files:
         behaviour['switch'][behaviour.reward > 0.5].sum()
         behaviour['switch'][behaviour.reward <= 0.5].sum()
 
-
-
-        model = smf.Logit.from_formula(formula='switch ~ reward + shock + reward * shock',
+        model = smf.Logit.from_formula(formula='switch ~ (reward + shock) ** 2',
                                        data=behaviour[~behaviour['switch'].isnull()])
-        result = model.fit()
+        result = model.fit(method='bfgs')
         # print result.summary()
         
         reward_betas.append(result.params.reward)
         shock_betas.append(result.params.shock)
         interaction_betas.append(result.params['reward:shock'])
+        intercept_betas.append(result.params.Intercept)
+
 
     except Exception as e:
         print "Failed on subject {0}".format(i)
         print e
+        # break
 
 reward = ttest_1samp(reward_betas, 0)
 shock = ttest_1samp(shock_betas, 0)
@@ -84,14 +86,30 @@ result_df = pd.DataFrame({'Predictor': ['Reward'] * len(reward_betas) +
                           'Beta coefficient': reward_betas + shock_betas + interaction_betas})
 
 sns.set_style("white")
-sns.barplot('Predictor', 'Beta coefficient', data=result_df, capsize=0.1, errwidth=1)
+sns.barplot('Predictor', 'Beta coefficient', data=result_df, capsize=0.1, errwidth=1, ci=95)
 plt.axhline(0, color='gray', linewidth=1, linestyle=':')
 # plt.text(-0.05, 1, "***")  # shows significance
 sns.despine()
 plt.title("Effect of reward and shock on switching behaviour")
+plt.savefig(os.path.join(behavioural_dir, 'behavioural_shift_plot.png'))
 
 
+r = np.arange(0, 1, 0.01)
+logits_1 = np.mean(intercept_betas) + np.mean(reward_betas) * r + np.mean(shock_betas) * 1 + np.mean(interaction_betas) * r * 1
+ee_1 = np.exp(logits_1) / (1 + np.exp(logits_1))
+logits_0 = np.mean(intercept_betas) + np.mean(reward_betas) * r + np.mean(shock_betas) * 0 + np.mean(interaction_betas) * r * 0
+ee_0 = np.exp(logits_0) / (1 + np.exp(logits_0))
 
+plt.figure(figsize=(5, 4))
+plt.plot(r, ee_0, label='No shock')
+plt.plot(r, ee_1, label='Shock')
+plt.legend()
+sns.despine()
+plt.ylabel("Probability of switch")
+plt.xlabel("Reward level")
+plt.title("Effects of reward and shock on switching behaviour")
+plt.tight_layout()
+plt.savefig(os.path.join(behavioural_dir, 'interaction_plot.png'))
 
 
 
