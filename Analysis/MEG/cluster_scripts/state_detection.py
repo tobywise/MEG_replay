@@ -261,7 +261,7 @@ if __name__ == '__main__':
     svcBO = BayesianOptimization(cvlr, {'C': (0.001, 50), 'n_features': (10, 150)})
     # svcBO.explore({'C': [0.001, 0.01, 0.1]})
 
-    svcBO.maximize(n_iter=5)
+    svcBO.maximize(n_iter=100)
     print('-' * 53)
     print('Final Results')
     print('SVC: %f' % svcBO.res['max']['max_val'])
@@ -354,7 +354,7 @@ if __name__ == '__main__':
     # PCA on planning and rest data
     print(rest_X.shape)
     rest_X = pca.transform(rest_X)
-
+    planning_X = pca.transform(planning_X)
 
     def augmentation(X, y, samples=False):
 
