@@ -258,10 +258,10 @@ if __name__ == '__main__':
 
     gp_params = {"alpha": 1e-5}
 
-    svcBO = BayesianOptimization(cvlr, {'C': (0.001, 50), 'n_features': (10, 150)})
+    svcBO = BayesianOptimization(cvlr, {'C': (0.0001, 1), 'n_features': (10, 100)})
     # svcBO.explore({'C': [0.001, 0.01, 0.1]})
 
-    svcBO.maximize(n_iter=100)
+    svcBO.maximize(n_iter=50)
     print('-' * 53)
     print('Final Results')
     print('SVC: %f' % svcBO.res['max']['max_val'])
@@ -276,7 +276,8 @@ if __name__ == '__main__':
     # Select data at timepoint with best classification accuracy (plus neighbouring timepoints)
 
     # USE OPTIMISED VALUES
-
+    # svcBO.res['max']['max_params']['C'] = 0.003
+    # svcBO.res['max']['max_params']['n_features'] = 50
     pca = UnsupervisedSpatialFilter(PCA(int(svcBO.res['max']['max_params']['n_features'])), average=False)
     print(X_raw.shape)
     pca_data = pca.fit_transform(X_raw)
