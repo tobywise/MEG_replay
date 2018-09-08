@@ -64,11 +64,13 @@ class Localiser(object):
         dialogue = gui.Dlg()
         dialogue.addText("Subject info")
         dialogue.addField('Subject ID')
+        dialogue.addField('Number of blocks', 2)
         dialogue.show()
 
         # check that values are OK and assign them to variables
         if dialogue.OK:
             self.subject_id = dialogue.data[0]
+            self.n_blocks = dialogue.data[1]
         else:
             core.quit()
 
@@ -97,7 +99,7 @@ class Localiser(object):
         self.fn = 0
 
         # Create the data file
-        self.data_keys = ['True_answer', 'Response', 'Image_idx']
+        self.data_keys = ['True_answer', 'Response', 'Image_idx', 'RT']
         self.save_folder = self.config['directories']['saved_data']
         self.save_prefix = self.config['filenames']['save_prefix']
 
@@ -234,6 +236,7 @@ class Localiser(object):
             self.response_data['True_answer'] = faded
             self.response_data['Response'] = key
             self.response_data['Image_idx'] = image_idx
+            self.response_data['RT'] = rt
             csvWriter([self.response_data[category] for category in self.data_keys])  # Write data
 
 
@@ -302,11 +305,9 @@ class Localiser(object):
         with open(stim_fname, 'wb') as f:
             f.write(str(self.stimuli))
 
-        n_blocks = self.config['task_settings']['n_blocks']
+        for i in range(self.n_blocks):
 
-        for i in range(n_blocks):
-
-            print "Block {0} of {1}".format(i + 1, n_blocks)
+            print "Block {0} of {1}".format(i + 1, self.n_blocks)
 
             # Run the localiser block
             self.run_localiser()
@@ -315,7 +316,7 @@ class Localiser(object):
             current_performance = self.get_performance()
             if current_performance < i * 4:
                 current_performance = i * 4 + 5
-            average_performance = np.max([current_performance + ((n_blocks / 2) - (n_blocks - i)), (i + 1) * 5])
+            average_performance = np.max([current_performance + ((self.n_blocks / 2) - (self.n_blocks - i)), (i + 1) * 5])
 
             print "CURRENT PERFORMANCE"
             print current_performance
