@@ -152,6 +152,8 @@ class Localiser(object):
 
         faded = False
 
+        rt = -999
+
         # Loop through trials
         for i in range(self.config['task_settings']['n_trials']):
 
@@ -280,7 +282,7 @@ class Localiser(object):
 
 
         # Resting
-        self.run_resting()
+        # self.run_resting()
         self.instructions("We are now starting the real task, get ready to spot the faded images", fixation=False)
 
         # Get location of stimuli
@@ -313,26 +315,26 @@ class Localiser(object):
             self.run_localiser()
 
             # Show current performance relative to average performance
-            current_performance = self.get_performance()
-            if current_performance < i * 4:
-                current_performance = i * 4 + 5
-            average_performance = np.max([current_performance + ((self.n_blocks / 2) - (self.n_blocks - i)), (i + 1) * 5])
+            # current_performance = self.get_performance()
+            # if current_performance < i * 4:
+            #     current_performance = i * 4 + 5
+            # average_performance = np.max([current_performance + ((self.n_blocks / 2) - (self.n_blocks - i)), (i + 1) * 5])
 
-            print "CURRENT PERFORMANCE"
-            print current_performance
-            print "AVERAGE PERFORMANCE"
-            print average_performance
+            # print "CURRENT PERFORMANCE"
+            # print current_performance
+            # print "AVERAGE PERFORMANCE"
+            # print average_performance
 
-            current_performance, average_performance = raw_input("Enter performance").split(',')
-            current_performance = int(re.search('\d+', current_performance).group())
-            average_performance = int(re.search('\d+', average_performance).group())
+            # current_performance, average_performance = raw_input("Enter performance").split(',')
+            # current_performance = int(re.search('\d+', current_performance).group())
+            # average_performance = int(re.search('\d+', average_performance).group())
 
-            if current_performance > 100 or average_performance > 100:
-                current_performance, average_performance = raw_input("Enter performance").split(',')
-                current_performance = int(re.search('\d+', current_performance).group())
-                average_performance = int(re.search('\d+', average_performance).group())
+            # if current_performance > 100 or average_performance > 100:
+            #     current_performance, average_performance = raw_input("Enter performance").split(',')
+            #     current_performance = int(re.search('\d+', current_performance).group())
+            #     average_performance = int(re.search('\d+', average_performance).group())
 
-            self.show_performance(current_performance, average_performance)
+            # self.show_performance(current_performance, average_performance)
 
             # self.instructions("Take a break", fixation=False)
             self.instructions("We are about to begin, please keep your head still until the next break")
