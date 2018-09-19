@@ -1,6 +1,6 @@
 You will first be guided through a training phase.
 
-*In the training, you will be able to move through the pictures but you will not see or receive any rewards.
+*In the training, you will be able to move through the pictures but you will not receive any shocks.
 
 You will first be shown the image you are current at, and then be shown the possible images you can move to next. You will see a grid of images, but you will only be able to choose the big images.
 
