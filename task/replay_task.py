@@ -92,6 +92,7 @@ class ReplayExperiment(object):
         dialogue.addField('MEG', initial=False)
         dialogue.addField('Show instructions', initial=True)
         dialogue.addField('Stimulus set', choices=[1, 2])
+        dialogue.addField('First trial', initial=0)
         dialogue.show()
 
 
@@ -107,6 +108,7 @@ class ReplayExperiment(object):
             self.MEG_mode = dialogue.data[7]
             self.show_instructions = dialogue.data[8]
             self.stimulus_set = int(dialogue.data[9])
+            self.first_trial = int(dialogue.data[10])
         else:
             core.quit()
 
@@ -434,7 +436,7 @@ class ReplayExperiment(object):
             current_state = 0
             self.display_image.setImage(self.stimuli[current_state])
 
-            for i in range(self.n_moves + 1):  # TRIAL LOOP - everything in here is repeated each trial
+            for i in range(self.n_moves + 1)[self.first_trial:]:  # TRIAL LOOP - everything in here is repeated each trial
 
                 print "Move {0} / {1}".format(i + 1, self.n_moves)
 
@@ -706,7 +708,7 @@ class ReplayExperiment(object):
                     # Show outcome
                     elif outcome_only_change_times[1] <= t < outcome_only_change_times[2]:
                         shock_only = shock_outcome[outcome_state]
-                        self.show_move(shock_only, outcome, self.stimuli[outcome_state], t,
+                        self.show_move(shock_only, '', self.stimuli[outcome_state], t,
                                        outcome_only_change_times[1] + self.config[self.durations][
                                            'outcome_only_duration'] / 2.,
                                        shock_delay=self.shock_delay)
