@@ -77,6 +77,7 @@ triggers:
   outcome_only_warning: 80
   shock_outcome: 50
   no_shock_outcome: 52
+  state_trigger_start: 20  # initial state trigger ID
 
 
 

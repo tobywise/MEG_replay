@@ -49,7 +49,9 @@ class ParallelPort(object):
         if data != self.value:
 
             if not self.test:
+                self._parallel.outp(self.port, 0)
                 self._parallel.outp(self.port, data)
+                self._parallel.outp(self.port, 0)
                 print "-- Sending value {0} to parallel port -- ".format(data)
                 if self.trigger_record_file:
                     self.trigger_record_file.write("-- Sending value {0} to parallel port -- \n".format(data))
@@ -1046,7 +1048,7 @@ class ReplayExperiment(object):
                 self.show_move(shock_outcome[state], outcome[state], self.stimuli[state], t,
                                start_time + self.cumulative_move_durations[n] + self.shock_symbol_delay, self.shock_delay)
 
-                self.send_trigger((n + 1) * 2, self.trigger_dict['State_{0}'.format(n)])
+                self.send_trigger(n * 2 + self.config['triggers']['state_trigger_start'], self.trigger_dict['State_{0}'.format(n)])
                 self.trigger_dict['State_{0}'.format(n)] = True
 
 
