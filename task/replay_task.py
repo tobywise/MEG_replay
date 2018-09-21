@@ -51,7 +51,6 @@ class ParallelPort(object):
             if not self.test:
                 self._parallel.outp(self.port, 0)
                 self._parallel.outp(self.port, data)
-                self._parallel.outp(self.port, 0)
                 print "-- Sending value {0} to parallel port -- ".format(data)
                 if self.trigger_record_file:
                     self.trigger_record_file.write("-- Sending value {0} to parallel port -- \n".format(data))
