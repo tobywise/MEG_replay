@@ -49,7 +49,7 @@ class ParallelPort(object):
         if data != self.value:
 
             if not self.test:
-                self._parallel.outp(self.port, 0)
+                self._parallel.outp(self.port, 0)  # Reset before sending data
                 self._parallel.outp(self.port, data)
                 print "-- Sending value {0} to parallel port -- ".format(data)
                 if self.trigger_record_file:
@@ -870,9 +870,11 @@ class ReplayExperiment(object):
 
                     if trial_type == 1:
                         for n in range(0, 3):
-                            self.response_data['State_{0}'.format(n + 1)] = np.nan
+                            self.response_data['State_{0}_shown'.format(n + 1)] = np.nan
+                            self.response_data['State_{0}_chosen'.format(n + 1)] = np.nan
                             self.response_data['RT_{0}'.format(n + 1)] = np.nan
                         self.response_data['Shock_received'] = shock_only
+                        self.response_data['State_3_shown'.format(n + 1)] = outcome_state
                     else:
                         for n, state in enumerate(generated_moves):
                             self.response_data['State_{0}_shown'.format(n + 1)] = state
