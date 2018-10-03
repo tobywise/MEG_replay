@@ -714,14 +714,15 @@ class ReplayExperiment(object):
                                           self.trigger_dict['Outcome_only_outcome'])
                         self.trigger_dict['Outcome_only_outcome'] = True
 
-                    # End trial
+                    # Rest period
                     elif outcome_only_change_times[2] <= t < outcome_only_change_times[3]:
                         self.fixation.draw()
-
-                    # Rest period
-                    elif t >= outcome_only_change_times[3]:
                         self.send_trigger(self.config['triggers']['rest'], self.trigger_dict['Rest'])
                         self.trigger_dict['Rest'] = True
+
+
+                    # End trial
+                    elif t >= outcome_only_change_times[3]:
                         continue_trial = False
 
                 else:
