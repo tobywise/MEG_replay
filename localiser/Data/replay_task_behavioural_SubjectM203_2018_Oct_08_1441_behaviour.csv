@@ -1,0 +1,14 @@
+True_answer,Response,Image_idx,RT
+False,0,1,-999
+False,0,0,-999
+True,0,1,-999
+False,0,3,-999
+True,0,4,-999
+True,0,3,-999
+False,0,6,-999
+False,0,5,-999
+True,0,2,-999
+True,0,6,-999
+False,0,0,-999
+True,0,0,-999
+False,0,2,-999
