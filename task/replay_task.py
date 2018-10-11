@@ -427,7 +427,7 @@ class ReplayExperiment(object):
         if show_intro:
             self.starting_instructions(["Starting training phase, press space to begin"])
 
-        for trial in range(self.n_training_trials):
+        for trial in range(self.n_training_trials)[self.first_trial:]:
 
             text = "Starting new trial"
             self.instructions(text)
@@ -437,7 +437,7 @@ class ReplayExperiment(object):
             current_state = 0
             self.display_image.setImage(self.stimuli[current_state])
 
-            for i in range(self.n_moves + 1)[self.first_trial:]:  # TRIAL LOOP - everything in here is repeated each trial
+            for i in range(self.n_moves + 1):  # TRIAL LOOP - everything in here is repeated each trial
 
                 print "Move {0} / {1}".format(i + 1, self.n_moves)
 
@@ -578,7 +578,7 @@ class ReplayExperiment(object):
         else:
             n_trials = self.n_test_trials
 
-        for i in range(n_trials):  # TRIAL LOOP
+        for i in range(n_trials)[self.first_trial:]:  # TRIAL LOOP
 
             print "Trial {0} / {1}".format(i + 1, n_trials)
             self.trigger_record_file.write("Trial {0} / {1}".format(i + 1, n_trials))

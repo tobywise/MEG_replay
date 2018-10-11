@@ -1,0 +1,3 @@
+Subject,trial_number,State_1_chosen,State_2_chosen,State_3_chosen,outcome_type,State_1_shown,State_2_shown,State_3_shown,RT_1,RT_2,RT_3,Reward_received,Shock_received,trial_type,State_1_shock,State_2_shock
+M205,0,2,4,6,moves_entered,2,4,6,7.63724365512644,9.624378333449386,11.693075060597039,,1.0,0.0,0.0,1.0
+M205,1,1,3,5,moves_entered,1,3,5,7.209961192809715,9.915925676849838,12.10393886453221,,1.0,0.0,1.0,0.0
