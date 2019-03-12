@@ -2,13 +2,13 @@
 
 #$ -S /bin/bash
 
-#$ -l mem=25G
-#$ -l h_rt=2:30:00
+#$ -l mem=10G
+#$ -l h_rt=0:30:00
 #$ -l tmpfs=20G
 
 #$ -wd ~/Scratch/replay_aversive_learning
 
-#$ -o ~/Scratch/replay_aversive_learning
+#$ -o ~/Scratch/replay_aversive_learningé
 #$ -e ~/Scratch/replay_aversive_learning
 
 
