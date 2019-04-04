@@ -65,6 +65,7 @@ class Localiser(object):
         dialogue.addText("Subject info")
         dialogue.addField('Subject ID')
         dialogue.addField('Number of blocks', 2)
+        dialogue.addField('Modality', choices=['MEG', 'EEG'])
         dialogue.show()
 
         # check that values are OK and assign them to variables
@@ -73,6 +74,12 @@ class Localiser(object):
             self.n_blocks = dialogue.data[1]
         else:
             core.quit()
+
+        # Check Modality
+        if dialogue.data[2] == 'MEG':
+            self.modality = 'MEG'
+        else:
+            self.modality = 'EEG'
 
         # Recode blank subject ID to zero - useful for testing
         if self.subject_id == '':
@@ -186,7 +193,10 @@ class Localiser(object):
                     faded = False
 
                 self.image.draw()
-                self.win.callOnFlip(self.parallel_port.setData, (image_idx + 1) * 2)  # Trigger value = (idx + 1) * 2
+                if self.modality == 'MEG':
+                    self.win.callOnFlip(self.parallel_port.setData, (image_idx + 1) * 2)  # Trigger value = (idx + 1) * 2
+                else:
+                    self.win.callOnFlip(self.parallel_port.setData, (image_idx + 1) * 4)  # Trigger value = (idx + 1) * 4
 
             fliptime = self.win.flip()
             self.parallel_port.setData(0)
