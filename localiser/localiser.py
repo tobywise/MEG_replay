@@ -177,7 +177,10 @@ class Localiser(object):
             if null_rng > 100 - self.config['task_settings']['percentage_null']:  # null trials
                 null = True
                 # self.fixation.draw()
-                self.win.callOnFlip(self.parallel_port.setData, 99)
+                if self.modality == 'EEG':
+                    self.win.callOnFlip(self.parallel_port.setData, 40)
+                elif self.modality == 'MEG':
+                    self.win.callOnFlip(self.parallel_port.setData, 99)
 
             # If not, show an image
             else:
