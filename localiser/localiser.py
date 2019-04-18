@@ -296,7 +296,7 @@ class Localiser(object):
 
         # Resting
         # self.run_resting()
-        self.instructions("We are now starting the real task, get ready to spot the faded images", fixation=False)
+        # self.instructions("We are now starting the real task, get ready to spot the faded images", fixation=False)
 
         # Get location of stimuli
         stimuli_location = self.config['directories']['stimuli_path']

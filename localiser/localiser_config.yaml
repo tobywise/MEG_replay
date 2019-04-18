@@ -1,7 +1,7 @@
 durations:
-  image_duration: 1.4  #
-  image_jitter: 0.5  #
-  fixation_duration: 1  #
+  image_duration: 0.8  #
+  image_jitter: 0.2  #
+  fixation_duration: 0.8  #
   fixation_jitter: 0.5  #
   text_duration: 1.2  #
   text_jitter: 0.3  #
@@ -10,7 +10,7 @@ task_settings:
   n_stimuli: 7
 #  n_blocks: 5
   percentage_faded: 30
-  percentage_null: 7
+  percentage_null: 0
 image_sizes:
   size_display_image: !!python/tuple [11, 11]  #
   size_display_image_small: !!python/tuple [10.5, 10.5]  #

@@ -29,7 +29,7 @@ MEG_durations:
   move_entering_reduction_length: 40 # Number of trials before move entering duration reaches the true duration
   move_entering_duration: 6  # Time given to enter moves
   pre_move_fixation_duration: 0.5 # Fixation before moves are shown
-  move_durations: !!python/list [1.6, 1.6, 1.6, 3]  # Duration moves are shown for
+  move_durations: !!python/list [0.8, 0.8, 0.8, 3]  # Duration moves are shown for
   outcome_only_text_duration: 2  #
   outcome_only_duration: 3  #
   rest_duration: 6  # Rest after outcome
@@ -37,7 +37,7 @@ MEG_durations:
   shock_delay: 0.8  # Delay before shocks are given following the shock image
   shock_symbol_delay: 1 # Delay before showing shock image
   n_moves: 3  # Number of moves subjects make
-  n_shocks: 5  # Number of shocks in each shock train
+  n_shocks: 0  # Number of shocks in each shock train
   trials_per_block: 20
 directories:
   saved_data: 'Data/behavioural/'
@@ -70,13 +70,13 @@ fonts:
   font_path: 'fonts/OpenSans-Regular.ttf'
   font_name: 'Open Sans'
 triggers:
-  rest: 30
-  planning: 60
+  rest: 4
+  planning: 8
   move_entering: 100
-  outcome_only_outcome: 40
+  outcome_only_outcome: 84
   outcome_only_warning: 80
-  shock_outcome: 50
-  no_shock_outcome: 52
+  shock_outcome: 12
+  no_shock_outcome: 16
   state_trigger_start: 20  # initial state trigger ID
 
 

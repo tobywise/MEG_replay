@@ -113,6 +113,24 @@ class ReplayExperiment(object):
         else:
             core.quit()
 
+        random.seed(int(re.search('\d+', self.subject_id).group()))  # all randomness will be the same every time the subject does the task
+
+        # State image files
+        stimuli_location = self.config['directories']['stimuli_path']
+
+        self.stimuli = [os.path.join(stimuli_location, i) for i in os.listdir(stimuli_location)
+                        if ('.png' in i or '.jpg' in i or '.jpeg' in i)
+                        and 'shock' not in i][self.matrix.shape[0] * (self.stimulus_set - 1):
+                                              self.matrix.shape[0] * self.stimulus_set]
+        # Save stimuli order
+        stim_fname = '{0}/{1}_Subject{2}_{3}_localiser_stimuli.txt'.format(self.save_folder, self.save_prefix, self.subject_id,
+                                                                    data.getDateStr())
+
+        random.shuffle(self.stimuli)  # make sure stimuli are randomly assigned to states
+        with open(stim_fname, 'wb') as f:
+            f.write(str(self.stimuli))
+        print(self.stimuli)
+
         # Set task mode - used for testing etc
         # 'Experiment' = normal, 'Testing' = show valid moves before move entering phase
         if self.mode == 'Testing':
@@ -129,8 +147,6 @@ class ReplayExperiment(object):
         # Recode blank subject ID to zero - useful for testing
         if self.subject_id == '':
             self.subject_id = '0'
-
-        random.seed(int(re.search('\d+', self.subject_id).group()))  # all randomness will be the same every time the subject does the task
 
         # This part sets up various things to allow us to save the data
         self.script_location = os.path.dirname(__file__)
@@ -259,22 +275,6 @@ class ReplayExperiment(object):
 
         # Circle used to indicate the current move
         self.circle = visual.Circle(win=self.win, radius=1, fillColor=None, lineColor=[1, 1, 1], pos=(0, -8))
-
-        # State image files
-        stimuli_location = self.config['directories']['stimuli_path']
-
-        self.stimuli = [os.path.join(stimuli_location, i) for i in os.listdir(stimuli_location)
-                        if ('.png' in i or '.jpg' in i or '.jpeg' in i)
-                        and 'shock' not in i][self.matrix.shape[0] * (self.stimulus_set - 1):
-                                              self.matrix.shape[0] * self.stimulus_set]
-
-        # Save stimuli order
-        stim_fname = '{0}/{1}_Subject{2}_{3}_localiser_stimuli.txt'.format(self.save_folder, self.save_prefix, self.subject_id,
-                                                                    data.getDateStr())
-
-        random.shuffle(self.stimuli)  # make sure stimuli are randomly assigned to states
-        with open(stim_fname, 'wb') as f:
-            f.write(str(self.stimuli))
 
         # State selection images
         self.state_selection_images = []  # list of tuples, (image id, imagestim)
@@ -1046,7 +1046,7 @@ class ReplayExperiment(object):
                 self.show_move(shock_outcome[state], outcome[state], self.stimuli[state], t,
                                start_time + self.cumulative_move_durations[n] + self.shock_symbol_delay, self.shock_delay)
 
-                self.send_trigger(n * 2 + self.config['triggers']['state_trigger_start'], self.trigger_dict['State_{0}'.format(n)])
+                self.send_trigger(n * 4 + self.config['triggers']['state_trigger_start'], self.trigger_dict['State_{0}'.format(n)])
                 self.trigger_dict['State_{0}'.format(n)] = True
 
 
