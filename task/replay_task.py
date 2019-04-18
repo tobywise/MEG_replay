@@ -113,15 +113,26 @@ class ReplayExperiment(object):
         else:
             core.quit()
 
+        # Recode blank subject ID to zero - useful for testing
+        if self.subject_id == '':
+            self.subject_id = '0'
         random.seed(int(re.search('\d+', self.subject_id).group()))  # all randomness will be the same every time the subject does the task
+
+        # Save file information
+        self.save_folder = self.config['directories']['saved_data']
+        self.save_prefix = self.config['filenames']['save_prefix']
+        if not os.path.isdir(self.save_folder):
+            os.makedirs(self.save_folder)
 
         # State image files
         stimuli_location = self.config['directories']['stimuli_path']
 
+        matrix = np.loadtxt(self.config['directories']['matrix'])
+
         self.stimuli = [os.path.join(stimuli_location, i) for i in os.listdir(stimuli_location)
                         if ('.png' in i or '.jpg' in i or '.jpeg' in i)
-                        and 'shock' not in i][self.matrix.shape[0] * (self.stimulus_set - 1):
-                                              self.matrix.shape[0] * self.stimulus_set]
+                        and 'shock' not in i][matrix.shape[0] * (self.stimulus_set - 1):
+                                              matrix.shape[0] * self.stimulus_set]
         # Save stimuli order
         stim_fname = '{0}/{1}_Subject{2}_{3}_localiser_stimuli.txt'.format(self.save_folder, self.save_prefix, self.subject_id,
                                                                     data.getDateStr())
@@ -144,17 +155,10 @@ class ReplayExperiment(object):
         else:
             self.durations = 'durations'
 
-        # Recode blank subject ID to zero - useful for testing
-        if self.subject_id == '':
-            self.subject_id = '0'
 
         # This part sets up various things to allow us to save the data
         self.script_location = os.path.dirname(__file__)
 
-        # Folder for saving data
-        self.save_folder = self.config['directories']['saved_data']
-        if not os.path.isdir(self.save_folder):
-            os.makedirs(self.save_folder)
 
         # ------------- #
         # Task settings #
@@ -204,9 +208,7 @@ class ReplayExperiment(object):
                           'State_1_shock', 'State_2_shock']
         self.response_data = dict(zip(self.data_keys, [None for i in self.data_keys]))
 
-        # Save file information
-        self.save_folder = self.config['directories']['saved_data']
-        self.save_prefix = self.config['filenames']['save_prefix']
+
 
         # -----------------------#
         # Monitor & window setup #
